@@ -1,12 +1,12 @@
 # spin
 SpectroPolarimetric inversion
 
-#HINODE Spectral Inversion
+##HINODE Spectral Inversion
 Authors: Stanley Dodds
 Affiliations: Institute for Astronomy, Univ. of Hawaii Manoa
 Date: 2018-10-13
 
-#Data Description
+##Data Description
 URL: 
 Citation: 
 
