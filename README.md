@@ -1,0 +1,2 @@
+# spin
+SpectroPolarimetric inversion
