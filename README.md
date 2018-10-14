@@ -33,3 +33,9 @@ The X (875) dimension is X on the solar disc where x=56 (6302A) for each of 875 
 The Y (512) dimension is Y on the solar disc in 0.317 arcsec pixels.
 
 The Z (4) dimension is the Stokes vector.
+
+## USAGE
+Edit parameters at the top of prep.py to set
+basePath = Path to scan for SP3D Level 1 images and FITS files
+spNum = Stokes paramater to use 0123 => IQUV
+wlOffset = Offset in pxiels from the central line
