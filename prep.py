@@ -8,7 +8,8 @@ dirsep = '/'
 csvdelim = ','
 #basePath="/d/hinode/spin/hao"
 #basePath='hao/web/csac.hao.ucar.edu/data/hinode/sot/level1/2012/10/21/SP3D'
-basePath='hao/web/csac.hao.ucar.edu/data/hinode/sot/level1/2012/10'
+#basePath='hao/web/csac.hao.ucar.edu/data/hinode/sot/level1'
+basePath='hao/web/csac.hao.ucar.edu/data/hinode/sot'
 imageText = "image"
 inputText = "*.fits"
 outputText = "out"
@@ -60,14 +61,22 @@ def load_fits(filnam):
       if len(mm) == 2:
         #print(index, ix, mm[0], mm[1])
         meta[mm[0].strip()] = mm[1].strip()
-  data = hdulist[0].data
+  nAxes = int(meta['NAXIS'])
+  if nAxes == 0:
+    nAxes = 2
+    data = hdulist[1].data
+  else:
+    data = hdulist[0].data
   data = np.nan_to_num(data)
   #print(data.shape)
   #img = data.reshape((maxy, maxx, maxz))
   #img = np.rollaxis(data, 1)
   img = data
-  #print(img.shape)
-  maxy, maxx, maxz = data.shape
+  if nAxes == 3:
+    maxy, maxx, maxz = data.shape
+  else:
+    maxy, maxx = data.shape
+    maxz = 0
   hdulist.close
   return maxy, maxx, maxz, meta, img
 
@@ -81,7 +90,7 @@ def process_sp3d(basePath):
     inName=basePath+path
     #print('Inspecting %s'%(inName))
     #open the warp warp diff image using "image" file
-    sub=path.split(dirsep)
+    sub=inName.split(dirsep)
     imageName=sub[-2]
     if imageName != prevImageName:
       if prevImageName != '':
@@ -104,24 +113,21 @@ def process_sp3d(basePath):
     # read the truth table from the "out" file
     #for k, v in imageMeta.items():
     #  print(k,v)
-    x = int(imageMeta['SLITINDX'])
-    wl = float(imageMeta['CRVAL1'])
-    dimZ, dimY, dimX = imageData.shape
-    #print('Z dimension=%d'%(dimZ))
-    #print('Y dimension=%d'%(dimY))
-    #print('X dimension=%d'%(dimX))
-    #for z in range(dimZ):
-    #  print(imageData[z,0,0])
-    #for z in range(dimZ):
-    #  print(imageData[z,0,dimX-1])
-    #for z in range(dimZ):
-    #  print(imageData[z,dimY-1,0])
-    #for z in range(dimZ):
-    #  print(imageData[z,dimY-1,dimX-1])
-    # concatenate the next column of data
-    if imageData.shape[1] == 512:
-      v=np.reshape(imageData[spNum,:,56+wlOffset],(512))
-      img[:,x] = v
+    if 'INVCODE' in imageMeta:
+      # level 2 FITS file
+      dimY, dimX = imageData.shape
+      dimZ = 0
+      wl = (float(imageMeta['LMIN2']) + float(imageMeta['LMAX2'])) / 2.0
+      img[:,1:dimX+1] = imageData
+    else:
+      # level 1 FITS file
+      x = int(imageMeta['SLITINDX'])
+      wl = float(imageMeta['CRVAL1'])
+      dimZ, dimY, dimX = imageData.shape
+      # concatenate the next column of data
+      if imageData.shape[1] == 512:
+        v=np.reshape(imageData[spNum,:,56+wlOffset],(512))
+        img[:,x] = v
 
   if prevImageName != '':
     # New image so wrap up the current image
