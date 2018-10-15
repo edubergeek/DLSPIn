@@ -64,7 +64,7 @@ def load_fits(filnam):
   nAxes = int(meta['NAXIS'])
   if nAxes == 0:
     nAxes = 2
-    data = hdulist[1].data
+    data = hdulist[2].data
   else:
     data = hdulist[0].data
   data = np.nan_to_num(data)
@@ -83,6 +83,7 @@ def load_fits(filnam):
 # Generator function to walk path and generate 1 SP3D image set at a time
 def process_sp3d(basePath):
   prevImageName=''
+  level = 0
   fsDetection = open_fs(basePath)
   img=np.empty((512,875))
   for path in fsDetection.walk.files(filter=[inputText]):
@@ -97,7 +98,7 @@ def process_sp3d(basePath):
         # New image so wrap up the current image
         # Flip image Y axis
         img = np.flip(img, axis=0)
-        yield img, imageName, wl
+        yield img, imageName, level, wl
       # Initialize for a new image
       print('Processing %s'%(imageName))
       prevImageName = imageName
@@ -115,12 +116,14 @@ def process_sp3d(basePath):
     #  print(k,v)
     if 'INVCODE' in imageMeta:
       # level 2 FITS file
+      level = 2
       dimY, dimX = imageData.shape
       dimZ = 0
       wl = (float(imageMeta['LMIN2']) + float(imageMeta['LMAX2'])) / 2.0
       img[:,1:dimX+1] = imageData
     else:
       # level 1 FITS file
+      level = 1
       x = int(imageMeta['SLITINDX'])
       wl = float(imageMeta['CRVAL1'])
       dimZ, dimY, dimX = imageData.shape
@@ -133,18 +136,17 @@ def process_sp3d(basePath):
     # New image so wrap up the current image
     # Flip image Y axis
     img = np.flip(img, axis=0)
-    yield img, imageName, wl
+    yield img, imageName, level, wl
   
 
 # main
 # find input files in the target dir "basePath"
-for levelOne, levelOneName, wL  in process_sp3d(basePath):
+for image, name, level, line in process_sp3d(basePath):
   #outFileHandle=open(trainCSV,'wt')
   #outFileHandle.close()
-  imgNorm = normalize(levelOne, 16)
-  fig = plt.figure(num='%s Level 1 %.2fA SP=%s'%(levelOneName,wL,SPName[spNum]))
+  #imgNorm = normalize(levelOne, 16)
+  fig = plt.figure(num='%s Level %d %.2fA SP=%s'%(name,level,line,SPName[spNum]))
   plt.gray()
-  #plt.title(levelOneName)
-  plt.imshow(imgNorm)
+  plt.imshow(image)
   plt.show()
   plt.close(fig)
