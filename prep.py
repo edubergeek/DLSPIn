@@ -9,25 +9,36 @@ csvdelim = ','
 #basePath="/d/hinode/spin/hao"
 #basePath='hao/web/csac.hao.ucar.edu/data/hinode/sot/level1/2012/10/21/SP3D'
 #basePath='hao/web/csac.hao.ucar.edu/data/hinode/sot/level1'
-basePath='hao/web/csac.hao.ucar.edu/data/hinode/sot'
+#basePath='hao/web/csac.hao.ucar.edu/data/hinode/sot'
+basePath='/d/hinode/data'
 imageText = "image"
 inputText = "*.fits"
 outputText = "out"
 trainCSV = "./spin.csv"
 xdim=32
 ydim=32
+XDim=875
+YDim=512
+
 wlOffset=10
 spNum=0
 SPName = ['I', 'Q', 'U', 'V' ]
+magNum=0
+MagName = ['Strength', 'Inclination', 'Azimuth']
 
 def chunkstring(string, length):
   return (string[0+i:length+i] for i in range(0, len(string), length))
 
-def normalize(img, bits):
-  vlo=np.amin(img)
-  vhi=np.amax(img)
-  vrg=vhi-vlo
-  img = (img - vlo) / vrg * 2**(bits-1)
+#def normalize(img, bits):
+#  vlo=np.amin(img)
+#  vhi=np.amax(img)
+#  vrg=vhi-vlo
+#  img = (img - vlo) / vrg * 2**(bits-1)
+#  return img
+
+def normalize(img, threshold):
+  val = np.percentile(img,threshold)
+  img = img / val
   return img
 
 def postage_stamp(img,x,y,w,h):
@@ -64,7 +75,7 @@ def load_fits(filnam):
   nAxes = int(meta['NAXIS'])
   if nAxes == 0:
     nAxes = 2
-    data = hdulist[2].data
+    data = hdulist[3].data
   else:
     data = hdulist[0].data
   data = np.nan_to_num(data)
@@ -85,7 +96,7 @@ def process_sp3d(basePath):
   prevImageName=''
   level = 0
   fsDetection = open_fs(basePath)
-  img=np.empty((512,875))
+  img=np.empty((YDim,XDim))
   for path in fsDetection.walk.files(filter=[inputText]):
     # process each "in" file of detections
     inName=basePath+path
@@ -98,11 +109,14 @@ def process_sp3d(basePath):
         # New image so wrap up the current image
         # Flip image Y axis
         img = np.flip(img, axis=0)
-        yield img, imageName, level, wl
+        yield img, fitsName, level, wl
       # Initialize for a new image
-      print('Processing %s'%(imageName))
+      print('Parsing %s - %s'%(imageName, path))
       prevImageName = imageName
+      fitsName=sub[-1]
       img[:,:]=0
+    #else:
+    #  print('Appending %s to %s'%(path, imageName))
     #imgName=basePath+dirsep+pointing+dirsep+imageText
     #imgName=inName
     #byteArray=bytearray(np.genfromtxt(imgName, 'S'))
@@ -120,7 +134,7 @@ def process_sp3d(basePath):
       dimY, dimX = imageData.shape
       dimZ = 0
       wl = (float(imageMeta['LMIN2']) + float(imageMeta['LMAX2'])) / 2.0
-      img[:,1:dimX+1] = imageData
+      img[0:dimY,0:dimX] = imageData
     else:
       # level 1 FITS file
       level = 1
@@ -128,15 +142,15 @@ def process_sp3d(basePath):
       wl = float(imageMeta['CRVAL1'])
       dimZ, dimY, dimX = imageData.shape
       # concatenate the next column of data
-      if imageData.shape[1] == 512:
-        v=np.reshape(imageData[spNum,:,56+wlOffset],(512))
-        img[:,x] = v
+    #if imageData.shape[1] == YDim:
+      v=np.reshape(imageData[spNum,:,56+wlOffset],(dimY))
+      img[0:dimY,x] = v
 
   if prevImageName != '':
     # New image so wrap up the current image
     # Flip image Y axis
     img = np.flip(img, axis=0)
-    yield img, imageName, level, wl
+    yield img, fitsName, level, wl
   
 
 # main
@@ -144,8 +158,12 @@ def process_sp3d(basePath):
 for image, name, level, line in process_sp3d(basePath):
   #outFileHandle=open(trainCSV,'wt')
   #outFileHandle.close()
-  #imgNorm = normalize(levelOne, 16)
-  fig = plt.figure(num='%s Level %d %.2fA SP=%s'%(name,level,line,SPName[spNum]))
+  image = normalize(image, 95)
+  if level==1:
+    fig = plt.figure(num='%s Level %d %.2fA SP=%s'%(name,level,line,SPName[spNum]))
+  else:
+    fig = plt.figure(num='%s Level %d %.2fA %s'%(name,level,line,MagName[magNum]))
+
   plt.gray()
   plt.imshow(image)
   plt.show()
