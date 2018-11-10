@@ -22,10 +22,9 @@ ZDim=4
 
 wlOffset=10
 
-pTest = 0.2
-pVal = 0.2
-
-nClone=100
+pTest = 0.0
+pVal = 0.0
+nClone=300
 
 train_filename = '../data/train.tfr'  # the TFRecord file containing the training set
 val_filename = '../data/val.tfr'      # the TFRecord file containing the validation set
@@ -180,47 +179,53 @@ test_writer = tf.python_io.TFRecordWriter(test_filename)
 # it is critical that pairs are produced reliably first level2 then level1
 # for each level2 (Y) file
 i = nExamples = nTrain = nVal = nTest = 0
-for c in range(0, nClone):
-  for image, name, level, line in process_sp3d(basePath):
-    if not i % 2:
-      # image is the level2 magnetic field prediction per pixel (Y)
-      y = image[0:YDim,0:XDim,0:3]
-      print(name, level, line)
-      nExamples += 1
-    else:
-      # image is the level1 Stokes params for several WLs of the line of interest (X)
-      x = normalize(image, 95)
-      print(name, level, line, y.shape, x.shape)
-      #feature = {'magfld': _bytes_feature(tf.compat.as_bytes(y.tostring())), 'stokes': _bytes_feature(tf.compat.as_bytes(x.tostring()))}
-      #xa = np.asarray(x).astype(np.float32)
-      #ya = np.asarray(y).astype(np.float32)
-      xa=np.reshape(x,(YDim*XDim*4))
-      ya=np.reshape(y,(YDim*XDim*3))
-      feature = {'magfld': _floatvector_feature(ya.tolist()), 'stokes': _floatvector_feature(xa.tolist())}
-      # Create an example protocol buffer
-      example = tf.train.Example(features=tf.train.Features(feature=feature))
-  
-      # roll the dice to see if this is a train, val or test example
-      # and write it to the appropriate TFRecordWriter
-      roll = np.random.random()
-      if roll >= (pVal + pTest):
-        # Serialize to string and write on the file
+for image, name, level, line in process_sp3d(basePath):
+  if level == 2:
+    # image is the level2 magnetic field prediction per pixel (Y)
+    #y = image[0:YDim,0:XDim,0:3]
+    ya=np.reshape(image[0:YDim,0:XDim,0:3],(YDim*XDim*3))
+    print(name, level, line)
+    nExamples += 1
+  else:
+    # image is the level1 Stokes params for several WLs of the line of interest (X)
+    x = normalize(image, 95)
+    #x = image
+    print(name, level, line)
+    #feature = {'magfld': _bytes_feature(tf.compat.as_bytes(y.tostring())), 'stokes': _bytes_feature(tf.compat.as_bytes(x.tostring()))}
+    #xa = np.asarray(x).astype(np.float32)
+    #ya = np.asarray(y).astype(np.float32)
+    xa=np.reshape(image,(YDim*XDim*4))
+    #ya=np.reshape(y,(YDim*XDim*3))
+    feature = {'magfld': _floatvector_feature(ya.tolist()), 'stokes': _floatvector_feature(xa.tolist())}
+    # Create an example protocol buffer
+    example = tf.train.Example(features=tf.train.Features(feature=feature))
+
+    # roll the dice to see if this is a train, val or test example
+    # and write it to the appropriate TFRecordWriter
+    roll = np.random.random()
+    if roll >= (pVal + pTest):
+      # Serialize to string and write on the file
+      for clone in range(nClone):
         train_writer.write(example.SerializeToString())
-        nTrain += 1
-      else:
-        if roll >= pTest:
-          # Serialize to string and write on the file
+      train_writer.write(example.SerializeToString())
+      nTrain += 1
+    else:
+      if roll >= pTest:
+        # Serialize to string and write on the file
+        for clone in range(nClone):
           val_writer.write(example.SerializeToString())
-          nVal += 1
-        else:
-          # Serialize to string and write on the file
-          test_writer.write(example.SerializeToString())
-          nTest += 1
-  
-    i += 1
-    if not nExamples % 1000:
-      print('%d examples: %03.1f%% train, %03.1f%%validate, %03.1f%%test.'%(nExamples, 100.0*nTrain/nExamples, 100.0*nVal/nExamples, 100.0*nTest/nExamples))
-      sys.stdout.flush()
+        nVal += 1
+      else:
+        # Serialize to string and write on the file
+        for clone in range(nClone):
+          val_writer.write(example.SerializeToString())
+        test_writer.write(example.SerializeToString())
+        nTest += 1
+
+  i += 1
+  if not nExamples % 1000:
+    print('%d examples: %03.1f%% train, %03.1f%%validate, %03.1f%%test.'%(nExamples, 100.0*nTrain/nExamples, 100.0*nVal/nExamples, 100.0*nTest/nExamples))
+    sys.stdout.flush()
   
 train_writer.close()
 val_writer.close()
