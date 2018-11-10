@@ -22,17 +22,19 @@ YMagfld=512
 ZMagfld=3
 
 sizeBatch=8
-nEpochs=30
+nEpochs=500
+nExamples=100
 
 pathTrain = '../data/train.tfr'  # The TFRecord file containing the training set
 pathValid = '../data/val.tfr'    # The TFRecord file containing the validation set
 pathTest = '../data/test.tfr'    # The TFRecord file containing the test set
-pathWeight = '../data/test1.h5'  # The HDF5 weight file generated for the trained model
+pathWeight = '../data/test2.h5'  # The HDF5 weight file generated for the trained model
+pathModel = '../data/test2.nn'  # The model saved as a JSON file
 
 def UNet():
   inputs = Input((YDim, XDim, ZStokes))
-  conv1 = Conv2D(32, (3, 3), activation='relu', padding='same')(inputs)
-  conv1 = Conv2D(32, (3, 3), activation='relu', padding='same')(conv1)
+  conv1 = Conv2D(64, (5, 5), activation='relu', padding='same')(inputs)
+  conv1 = Conv2D(64, (5, 5), activation='relu', padding='same')(conv1)
   pool1 = MaxPooling2D(pool_size=(2, 2))(conv1)
 
   conv2 = Conv2D(64, (3, 3), activation='relu', padding='same')(pool1)
@@ -62,9 +64,9 @@ def UNet():
   conv8 = Conv2D(64, (3, 3), activation='relu', padding='same')(up8)
   conv8 = Conv2D(64, (3, 3), activation='relu', padding='same')(conv8)
 
-  up9 = concatenate([Conv2DTranspose(32, (2, 2), strides=(2, 2), padding='same')(conv8), conv1], axis=3)
-  conv9 = Conv2D(32, (3, 3), activation='relu', padding='same')(up9)
-  conv9 = Conv2D(32, (3, 3), activation='relu', padding='same')(conv9)
+  up9 = concatenate([Conv2DTranspose(64, (2, 2), strides=(2, 2), padding='same')(conv8), conv1], axis=3)
+  conv9 = Conv2D(64, (5, 5), activation='relu', padding='same')(up9)
+  conv9 = Conv2D(64, (5, 5), activation='relu', padding='same')(conv9)
 
   conv10 = Conv2D(ZMagfld, (1, 1), activation='linear')(conv9)
 
@@ -101,16 +103,18 @@ def train():
 
   #construct a TFRecordDataset
   dsTrain = tf.data.TFRecordDataset(pathTrain).map(_parse_record)
-  dsTrain = dsTrain.repeat(30)
-  dsTrain = dsTrain.shuffle(10).batch(sizeBatch)
+  dsTrain = dsTrain.shuffle(32)
+  dsTrain = dsTrain.repeat()
+  dsTrain = dsTrain.batch(sizeBatch)
 
   dsValid = tf.data.TFRecordDataset(pathValid).map(_parse_record)
-  dsValid = dsValid.repeat(30)
-  dsValid = dsValid.shuffle(10).batch(sizeBatch)
+  dsValid = dsValid.shuffle(32)
+  dsValid = dsValid.repeat()
+  dsValid = dsValid.batch(10)
 
-  dsTest = tf.data.TFRecordDataset(pathTest).map(_parse_record)
-  dsTest = dsValid.repeat(30)
-  dsTest = dsValid.shuffle(10).batch(sizeBatch)
+  #dsTest = tf.data.TFRecordDataset(pathTest).map(_parse_record)
+  #dsTest = dsValid.repeat(30)
+  #dsTest = dsValid.shuffle(10).batch(sizeBatch)
 
   print('-'*30)
   print('Creating and compiling model...')
@@ -125,19 +129,24 @@ def train():
   print('Fitting model...')
   print('-'*30)
 
-  print(dsTrain)
-  history = model.fit(dsTrain, validation_data=dsValid, validation_steps=2, steps_per_epoch=10, epochs=nEpochs, verbose=1, callbacks=callbacks)
+  #print(dsTrain)
+  history = model.fit(dsTrain, validation_data=dsValid, validation_steps=1, steps_per_epoch=int(np.ceil(nExamples/sizeBatch)), epochs=nEpochs, verbose=1, callbacks=callbacks)
   #history = model.fit(dsTrain, validation_data=dsValid, epochs=nEpochs, verbose=1, callbacks=callbacks)
 
-  Y = model.predict(dsTest, steps=1)
-  image = Y[0,:,:,0]
-  
-  fig = plt.figure(num='Level 2 - Predicted')
+  # serialize model to JSON
+  model_serial = model.to_json()
+  with open(pathModel, "w") as yaml_file:
+    yaml_file.write(model_serial)
 
-  plt.gray()
-  plt.imshow(image)
-  plt.show()
-  plt.close(fig)
+  #Y = model.predict(dsTest, steps=1)
+  #image = Y[0,:,:,0]
+  
+  #fig = plt.figure(num='Level 2 - Predicted')
+
+  #plt.gray()
+  #plt.imshow(image)
+  #plt.show()
+  #plt.close(fig)
 
 print(tf.__version__)
 train()
