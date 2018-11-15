@@ -20,11 +20,13 @@ XDim=875
 YDim=512
 ZDim=4
 
-wlOffset=10
+WDim=9
+WStart=0
+WStep=5
 
-pTest = 0.0
-pVal = 0.0
-nClone=300
+pTest = 0.1
+pVal = 0.1
+nClone=100
 
 train_filename = '../data/train.tfr'  # the TFRecord file containing the training set
 val_filename = '../data/val.tfr'      # the TFRecord file containing the validation set
@@ -88,7 +90,8 @@ def process_sp3d(basePath):
   prevImageName=''
   level = 0
   fsDetection = open_fs(basePath)
-  img=np.empty((YDim,XDim,ZDim))
+  img=np.empty((WDim,YDim,XDim,ZDim))
+  WInd = list(range(WStart,WStart+WDim*WStep,WStep))
   for path in fsDetection.walk.files(search='breadth', filter=[inputText]):
     # process each "in" file of detections
     inName=basePath+path
@@ -100,13 +103,14 @@ def process_sp3d(basePath):
       if prevImageName != '':
         # New image so wrap up the current image
         # Flip image Y axis
-        img = np.flip(img, axis=0)
+        img = np.flip(img, axis=1)
         yield img, fitsName, level, wl
       # Initialize for a new image
       #print('Parsing %s - %s'%(imageName, path))
       prevImageName = imageName
       fitsName=sub[-1]
-      img[:,:]=0
+      # reset image to zeros
+      img[:,:,:,:]=0
     #else:
     #  print('Appending %s to %s'%(path, imageName))
     #imgName=basePath+dirsep+pointing+dirsep+imageText
@@ -124,31 +128,38 @@ def process_sp3d(basePath):
       # level 2 FITS file
       level = 2
       dimY, dimX, dimZ = imageData.shape
+      dimW = 0
       #dimZ = 0
       # we should have 3 dimensions, the azimuth, altitude and intensity
       wl = (float(imageMeta['LMIN2']) + float(imageMeta['LMAX2'])) / 2.0
-      img[0:dimY,0:dimX,0:dimZ] = imageData
+      img[0,0:dimY,0:dimX,0:dimZ] = imageData
     else:
       # level 1 FITS file
       level = 1
       x = int(imageMeta['SLITINDX'])
-      wl = float(imageMeta['CRVAL1'])
+      wl = float(imageMeta['CRVAL1']) + (WStart*float(imageMeta['CDELT1']))
       dimZ, dimY, dimX = imageData.shape
+      dimW = WDim
       # concatenate the next column of data
-    #if imageData.shape[1] == YDim:
-      v=np.reshape(imageData[0,:,56+wlOffset],(dimY))
-      img[0:dimY,x,0] = v
-      v=np.reshape(imageData[1,:,56+wlOffset],(dimY))
-      img[0:dimY,x,1] = v
-      v=np.reshape(imageData[2,:,56+wlOffset],(dimY))
-      img[0:dimY,x,2] = v
-      v=np.reshape(imageData[3,:,56+wlOffset],(dimY))
-      img[0:dimY,x,3] = v
+      # 4, 512, 112
+      # 1, 512, 9
+      a=np.reshape(imageData[0,:,:],(dimY, dimX))
+      a = a[:,WInd]
+      img[0:dimW,0:dimY,x,0] = np.transpose(a)
+      a=np.reshape(imageData[1,:,:],(dimY, dimX))
+      a = a[:,WInd]
+      img[0:dimW,0:dimY,x,1] = np.transpose(a)
+      a=np.reshape(imageData[2,:,:],(dimY, dimX))
+      a = a[:,WInd]
+      img[0:dimW,0:dimY,x,2] = np.transpose(a)
+      a=np.reshape(imageData[3,:,:],(dimY, dimX))
+      a = a[:,WInd]
+      img[0:dimW,0:dimY,x,3] = np.transpose(a)
 
   if prevImageName != '':
     # New image so wrap up the current image
     # Flip image Y axis
-    img = np.flip(img, axis=0)
+    img = np.flip(img, axis=1)
     yield img, fitsName, level, wl
     fsDetection.close()
   
@@ -182,8 +193,7 @@ i = nExamples = nTrain = nVal = nTest = 0
 for image, name, level, line in process_sp3d(basePath):
   if level == 2:
     # image is the level2 magnetic field prediction per pixel (Y)
-    #y = image[0:YDim,0:XDim,0:3]
-    ya=np.reshape(image[0:YDim,0:XDim,0:3],(YDim*XDim*3))
+    ya=np.reshape(image[0,0:YDim,0:XDim,0:3],(YDim*XDim*3))
     print(name, level, line)
     nExamples += 1
   else:
@@ -194,31 +204,25 @@ for image, name, level, line in process_sp3d(basePath):
     #feature = {'magfld': _bytes_feature(tf.compat.as_bytes(y.tostring())), 'stokes': _bytes_feature(tf.compat.as_bytes(x.tostring()))}
     #xa = np.asarray(x).astype(np.float32)
     #ya = np.asarray(y).astype(np.float32)
-    xa=np.reshape(image,(YDim*XDim*4))
-    #ya=np.reshape(y,(YDim*XDim*3))
+    xa=np.reshape(image,(WDim*YDim*XDim*ZDim))
     feature = {'magfld': _floatvector_feature(ya.tolist()), 'stokes': _floatvector_feature(xa.tolist())}
     # Create an example protocol buffer
     example = tf.train.Example(features=tf.train.Features(feature=feature))
 
     # roll the dice to see if this is a train, val or test example
     # and write it to the appropriate TFRecordWriter
-    roll = np.random.random()
-    if roll >= (pVal + pTest):
-      # Serialize to string and write on the file
-      for clone in range(nClone):
-        train_writer.write(example.SerializeToString())
-      train_writer.write(example.SerializeToString())
-      nTrain += 1
-    else:
-      if roll >= pTest:
+    for clone in range(nClone):
+      roll = np.random.random()
+      if roll >= (pVal + pTest):
         # Serialize to string and write on the file
-        for clone in range(nClone):
-          val_writer.write(example.SerializeToString())
+        train_writer.write(example.SerializeToString())
+        nTrain += 1
+      elif roll >= pTest:
+        # Serialize to string and write on the file
+        val_writer.write(example.SerializeToString())
         nVal += 1
       else:
         # Serialize to string and write on the file
-        for clone in range(nClone):
-          val_writer.write(example.SerializeToString())
         test_writer.write(example.SerializeToString())
         nTest += 1
 
