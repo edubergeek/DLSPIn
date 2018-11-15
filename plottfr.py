@@ -6,10 +6,12 @@ import matplotlib.pyplot as plt
 XDim=864
 YDim=512
 ZDim=4
+WDim=9
 
 XStokes=875
 YStokes=512
 ZStokes=4
+WStokes=9
 
 XMagfld=875
 YMagfld=512
@@ -38,11 +40,15 @@ with tf.Session() as sess:
 
     """Parse a single record into x and y images"""
     x = features['stokes']
-    x = tf.reshape(x, (YStokes, XStokes, ZStokes))
-    x = tf.slice(x, (0, 0, 0), (YDim, XDim, ZStokes))
+    # unroll into a 4D array
+    x = tf.reshape(x, (WStokes, YStokes, XStokes, ZStokes))
+    # use slice to crop the data to the model dimensions - powers of 2 are a factor
+    x = tf.slice(x, (0, 0, 0, 0), (WStokes, YDim, XDim, ZStokes))
     
     y = features['magfld']
+    # unroll into a 3D array
     y = tf.reshape(y, (YMagfld, XMagfld, ZMagfld))
+    # use slice to crop the data
     y = tf.slice(y, (0, 0, 0), (YDim, XDim, ZMagfld))
     #y = tf.cast(features['train/period'], tf.float32)
     
@@ -62,10 +68,12 @@ with tf.Session() as sess:
     for batch_index in range(batchN):
         level1, level2 = sess.run([X, Y])
         for i in range(X.shape[0]):
-            imLevel1 = level1[i,0:512,0:864,0]
-            plt.gray()
-            plt.imshow(imLevel1)
-            plt.show()
+            for j in range(X.shape[1]):
+                imLevel1 = level1[i,j,0:512,0:864,0]
+                plt.gray()
+                plt.imshow(imLevel1)
+                plt.show()
+
             imLevel2 = level2[i, 0:512,0:864,0]
             plt.imshow(imLevel2)
             plt.show()
