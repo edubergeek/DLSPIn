@@ -5,7 +5,7 @@ from fs import open_fs
 
 dirsep = '/'
 csvdelim = ','
-basePath='/d/hinode/data/20120703_134836/level2'
+basePath='/d/hinode/data/20120703_134836/level1'
 
 
 imageText = "image"
