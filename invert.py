@@ -12,8 +12,8 @@ from tensorflow.keras.optimizers import Adam
 dirsep = '/'
 csvdelim = ','
 pathData='/d/hinode/data'
-pathWeight = '../data/test1.h5'  # The HDF5 weight file generated for the trained model
-pathModel = '../data/test1.nn'  # The model saved as a JSON file
+pathWeight = '../data/test3.h5'  # The HDF5 weight file generated for the trained model
+pathModel = '../data/test3.nn'  # The model saved as a JSON file
 imageText = "image"
 inputText = "*.fits"
 outputText = "out"
@@ -24,7 +24,10 @@ XDim=875
 YDim=512
 ZDim=4
 
-wlOffset=10
+WDim=9
+WStart=0
+WStep=5
+
 spNum=0
 SPName = ['I', 'Q', 'U', 'V' ]
 magNum=0
@@ -85,14 +88,15 @@ def load_fits(filnam):
   return maxy, maxx, maxz, meta, img
 
 # Generator function to walk path and generate 1 SP3D image set at a time
-def process_sp3d(pathData):
+def process_sp3d(basePath):
   prevImageName=''
   level = 0
-  fsDetection = open_fs(pathData)
-  img=np.empty((YDim,XDim,ZDim))
+  fsDetection = open_fs(basePath)
+  img=np.empty((WDim,YDim,XDim,ZDim))
+  WInd = list(range(WStart,WStart+WDim*WStep,WStep))
   for path in fsDetection.walk.files(search='breadth', filter=[inputText]):
     # process each "in" file of detections
-    inName=pathData+path
+    inName=basePath+path
     #print('Inspecting %s'%(inName))
     #open the warp warp diff image using "image" file
     sub=inName.split(dirsep)
@@ -101,16 +105,17 @@ def process_sp3d(pathData):
       if prevImageName != '':
         # New image so wrap up the current image
         # Flip image Y axis
-        img = np.flip(img, axis=0)
+        img = np.flip(img, axis=1)
         yield img, fitsName, level, wl
       # Initialize for a new image
       #print('Parsing %s - %s'%(imageName, path))
       prevImageName = imageName
       fitsName=sub[-1]
-      img[:,:]=0
+      # reset image to zeros
+      img[:,:,:,:]=0
     #else:
     #  print('Appending %s to %s'%(path, imageName))
-    #imgName=pathData+dirsep+pointing+dirsep+imageText
+    #imgName=basePath+dirsep+pointing+dirsep+imageText
     #imgName=inName
     #byteArray=bytearray(np.genfromtxt(imgName, 'S'))
     #imageFile=byteArray.decode()
@@ -125,30 +130,38 @@ def process_sp3d(pathData):
       # level 2 FITS file
       level = 2
       dimY, dimX, dimZ = imageData.shape
+      dimW = 0
       #dimZ = 0
       # we should have 3 dimensions, the azimuth, altitude and intensity
       wl = (float(imageMeta['LMIN2']) + float(imageMeta['LMAX2'])) / 2.0
-      img[0:dimY,0:dimX,0:dimZ] = imageData
+      img[0,0:dimY,0:dimX,0:dimZ] = imageData
     else:
       # level 1 FITS file
       level = 1
       x = int(imageMeta['SLITINDX'])
-      wl = float(imageMeta['CRVAL1'])
+      wl = float(imageMeta['CRVAL1']) + (WStart*float(imageMeta['CDELT1']))
       dimZ, dimY, dimX = imageData.shape
+      dimW = WDim
       # concatenate the next column of data
-      v=np.reshape(imageData[0,:,56+wlOffset],(dimY))
-      img[0:dimY,x,0] = v
-      v=np.reshape(imageData[1,:,56+wlOffset],(dimY))
-      img[0:dimY,x,1] = v
-      v=np.reshape(imageData[2,:,56+wlOffset],(dimY))
-      img[0:dimY,x,2] = v
-      v=np.reshape(imageData[3,:,56+wlOffset],(dimY))
-      img[0:dimY,x,3] = v
+      # 4, 512, 112
+      # 1, 512, 9
+      a=np.reshape(imageData[0,:,:],(dimY, dimX))
+      a = a[:,WInd]
+      img[0:dimW,0:dimY,x,0] = np.transpose(a)
+      a=np.reshape(imageData[1,:,:],(dimY, dimX))
+      a = a[:,WInd]
+      img[0:dimW,0:dimY,x,1] = np.transpose(a)
+      a=np.reshape(imageData[2,:,:],(dimY, dimX))
+      a = a[:,WInd]
+      img[0:dimW,0:dimY,x,2] = np.transpose(a)
+      a=np.reshape(imageData[3,:,:],(dimY, dimX))
+      a = a[:,WInd]
+      img[0:dimW,0:dimY,x,3] = np.transpose(a)
 
   if prevImageName != '':
     # New image so wrap up the current image
     # Flip image Y axis
-    img = np.flip(img, axis=0)
+    img = np.flip(img, axis=1)
     yield img, fitsName, level, wl
     fsDetection.close()
   
@@ -180,10 +193,10 @@ for image, name, level, line in process_sp3d(pathData):
   if level==1:
     image = normalize(image, 95)
     # forward pass through the model to invert the Level 1 SP images and predict the Level 2 image mag fld maps
-    batchIn = np.reshape(image[0:512,0:864,0:4], (1, 512, 864, 4))
+    batchIn = np.reshape(image[0:9,0:512,0:864,0:4], (1, 9, 512, 864, 4))
     batchOut = model.predict(batchIn)
     imPredict = batchOut[0,:,:,magNum]
-    imLevel1 = image[0:512,0:864,spNum]
+    imLevel1 = image[4,0:512,0:864,spNum]
 
     # prepare to visualize
     #fig = plt.figure(num='%s %.2fA SP=%s MF=%s'%(name,line,SPName[spNum], MagName[magNum]))
@@ -202,6 +215,6 @@ for image, name, level, line in process_sp3d(pathData):
     #plt.close(fig)
   else:
     #fig = plt.figure(num='%s %.2fA SP=%s MF=%s'%(name,line,SPName[spNum], MagName[magNum]))
-    imLevel2 = image[0:512,0:864,magNum]
+    imLevel2 = image[0,0:512,0:864,magNum]
     plt.imshow(imLevel2)
     plt.show()
