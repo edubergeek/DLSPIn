@@ -4,7 +4,8 @@ import pickle
 import matplotlib.pyplot as plt
 
 from tensorflow.keras.models import Model
-from tensorflow.keras.layers import Input, concatenate, Conv2D, MaxPooling2D, Conv2DTranspose
+from tensorflow.keras.layers import Input, concatenate, Conv2D, MaxPooling2D, Conv2DTranspose, Reshape
+from tensorflow.keras.layers import Conv3D, Conv3DTranspose, MaxPooling3D
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.callbacks import ModelCheckpoint
 from tensorflow.keras import backend as K
@@ -12,29 +13,34 @@ from tensorflow.keras import backend as K
 XDim=864
 YDim=512
 ZDim=4
+WDim=9
 
 XStokes=875
 YStokes=512
 ZStokes=4
+WStokes=9
 
 XMagfld=875
 YMagfld=512
 ZMagfld=3
 
-sizeBatch=8
-nEpochs=500
+sizeBatch=2
+nEpochs=50
 nExamples=100
 
 pathTrain = '../data/train.tfr'  # The TFRecord file containing the training set
 pathValid = '../data/val.tfr'    # The TFRecord file containing the validation set
 pathTest = '../data/test.tfr'    # The TFRecord file containing the test set
-pathWeight = '../data/test2.h5'  # The HDF5 weight file generated for the trained model
-pathModel = '../data/test2.nn'  # The model saved as a JSON file
+pathWeight = '../data/test3.h5'  # The HDF5 weight file generated for the trained model
+pathModel = '../data/test3.nn'  # The model saved as a JSON file
 
 def UNet():
-  inputs = Input((YDim, XDim, ZStokes))
-  conv1 = Conv2D(64, (5, 5), activation='relu', padding='same')(inputs)
-  conv1 = Conv2D(64, (5, 5), activation='relu', padding='same')(conv1)
+  inputs = Input((WStokes, YDim, XDim, ZStokes))
+  conv1 = Conv3D(32, (WDim, 3, 3), activation='relu', padding='same')(inputs)
+  conv1 = MaxPooling3D(pool_size=(WDim, 1, 1))(conv1)
+  conv1 = Reshape((YDim, XDim, 32))(conv1)
+  conv1 = Conv2D(32, (3, 3), activation='relu', padding='same')(conv1)
+  #pool1 = Reshape((YDim, XDim, WDim*ZStokes))(pool1)
   pool1 = MaxPooling2D(pool_size=(2, 2))(conv1)
 
   conv2 = Conv2D(64, (3, 3), activation='relu', padding='same')(pool1)
@@ -64,9 +70,9 @@ def UNet():
   conv8 = Conv2D(64, (3, 3), activation='relu', padding='same')(up8)
   conv8 = Conv2D(64, (3, 3), activation='relu', padding='same')(conv8)
 
-  up9 = concatenate([Conv2DTranspose(64, (2, 2), strides=(2, 2), padding='same')(conv8), conv1], axis=3)
-  conv9 = Conv2D(64, (5, 5), activation='relu', padding='same')(up9)
-  conv9 = Conv2D(64, (5, 5), activation='relu', padding='same')(conv9)
+  up9 = concatenate([Conv2DTranspose(32, (2, 2), strides=(2, 2), padding='same')(conv8), conv1], axis=3)
+  conv9 = Conv2D(32, (3, 3), activation='relu', padding='same')(up9)
+  conv9 = Conv2D(32, (3, 3), activation='relu', padding='same')(conv9)
 
   conv10 = Conv2D(ZMagfld, (1, 1), activation='linear')(conv9)
 
@@ -91,8 +97,8 @@ def train():
     example = tf.parse_single_example(example_proto, featdef)
     #x = tf.decode_raw(example['stokes'], tf.float32)
     x = example['stokes']
-    x = tf.reshape(x, (YStokes, XStokes, ZStokes))
-    x = tf.slice(x, (0, 0, 0), (YDim, XDim, ZStokes))
+    x = tf.reshape(x, (WStokes, YStokes, XStokes, ZStokes))
+    x = tf.slice(x, (0, 0, 0, 0), (WStokes, YDim, XDim, ZStokes))
     
     #y = tf.decode_raw(example['magfld'], tf.float32)
     y = example['magfld']
@@ -103,14 +109,14 @@ def train():
 
   #construct a TFRecordDataset
   dsTrain = tf.data.TFRecordDataset(pathTrain).map(_parse_record)
-  dsTrain = dsTrain.shuffle(32)
+  dsTrain = dsTrain.shuffle(16)
   dsTrain = dsTrain.repeat()
   dsTrain = dsTrain.batch(sizeBatch)
 
   dsValid = tf.data.TFRecordDataset(pathValid).map(_parse_record)
-  dsValid = dsValid.shuffle(32)
+  dsValid = dsValid.shuffle(16)
   dsValid = dsValid.repeat()
-  dsValid = dsValid.batch(10)
+  dsValid = dsValid.batch(2)
 
   #dsTest = tf.data.TFRecordDataset(pathTest).map(_parse_record)
   #dsTest = dsValid.repeat(30)
