@@ -12,8 +12,8 @@ from tensorflow.keras.optimizers import Adam
 dirsep = '/'
 csvdelim = ','
 pathData='/d/hinode/data'
-pathWeight = '../data/test3.h5'  # The HDF5 weight file generated for the trained model
-pathModel = '../data/test3.nn'  # The model saved as a JSON file
+pathWeight = '../data/3d3d.h5'  # The HDF5 weight file generated for the trained model
+pathModel = '../data/3d3d.nn'  # The model saved as a JSON file
 imageText = "image"
 inputText = "*.fits"
 outputText = "out"
@@ -28,10 +28,16 @@ WDim=9
 WStart=0
 WStep=5
 
-spNum=0
+XInv=864
+YInv=512
+ZInv=4
+WInv=9
+
+spNum=3
 SPName = ['I', 'Q', 'U', 'V' ]
-magNum=0
+magNum=1
 MagName = ['Strength', 'Inclination', 'Azimuth']
+
 
 def chunkstring(string, length):
   return (string[0+i:length+i] for i in range(0, len(string), length))
@@ -193,28 +199,63 @@ for image, name, level, line in process_sp3d(pathData):
   if level==1:
     image = normalize(image, 95)
     # forward pass through the model to invert the Level 1 SP images and predict the Level 2 image mag fld maps
-    batchIn = np.reshape(image[0:9,0:512,0:864,0:4], (1, 9, 512, 864, 4))
+    batchIn = np.reshape(image[0:WInv,0:YInv,0:XInv,0:ZInv], (1, WInv, YInv, XInv, ZInv))
     batchOut = model.predict(batchIn)
-    imPredict = batchOut[0,:,:,magNum]
-    imLevel1 = image[4,0:512,0:864,spNum]
+    imPredictS = batchOut[0,:,:,0]
+    imPredictI = batchOut[0,:,:,1]
+    imPredictA = batchOut[0,:,:,2]
+    WL = int(np.ceil(WInv/2))
+    imLevel1V = image[WL,0:YInv,0:XInv,3]
+    imLevel1I = image[WL,0:YInv,0:XInv,0]
 
     # prepare to visualize
-    #fig = plt.figure(num='%s %.2fA SP=%s MF=%s'%(name,line,SPName[spNum], MagName[magNum]))
-    #fig, axs = plt.subplots(Nr, Nc)
-    #fig.suptitle('%s %.2fA SP=%s MF=%s'%(name,line,SPName[spNum],MagName[magNum]))
-
-    # Plot the images
-    #axs[0, 0].imshow(imLevel1)
-    #axs[0, 1].imshow(imLevel2)
-    #axs[1, 0].imshow(imLevel1)
-    #axs[1, 1].imshow(imPredict)
-    plt.imshow(imLevel1)
+    fig1 = plt.figure(1)
+    fig1.suptitle('%s Level 1'%(name), fontsize=14)
+    plt.subplot(121)
+    plt.title('%.2fA SP=%s'%(line, SPName[0]))
+    plt.imshow(imLevel1I)
+    plt.subplot(122)
+    plt.title('%.2fA SP=%s'%(line, SPName[3]))
+    plt.imshow(imLevel1V)
+    fig2 = plt.figure(2)
+    fig2.suptitle('%s Mag Field'%(name), fontsize=14)
+    plt.subplot(121)
+    plt.title('Level2 MF=%s'%(MagName[0]))
+    plt.imshow(imLevel2S)
+    plt.subplot(122)
+    plt.title('Model MF=%s'%(MagName[0]))
+    plt.imshow(imPredictS)
+    fig3 = plt.figure(3)
+    fig3.suptitle('%s Mag Field'%(name), fontsize=14)
+    plt.subplot(121)
+    plt.title('Level2 MF=%s'%(MagName[1]))
+    plt.imshow(imLevel2I)
+    plt.subplot(122)
+    plt.title('Model MF=%s'%(MagName[1]))
+    plt.imshow(imPredictI)
+    fig4 = plt.figure(4)
+    fig4.suptitle('%s Mag Field'%(name), fontsize=14)
+    plt.subplot(121)
+    plt.title('Level2 MF=%s'%(MagName[2]))
+    plt.imshow(imLevel2A)
+    plt.subplot(122)
+    plt.title('Model MF=%s'%(MagName[2]))
+    plt.imshow(imPredictA)
+    plt.subplots_adjust(hspace=0.30, wspace=0.15)
     plt.show()
-    plt.imshow(imPredict)
-    plt.show()
-    #plt.close(fig)
+    plt.close(fig1)
+    plt.close(fig2)
+    plt.close(fig3)
+    plt.close(fig4)
   else:
-    #fig = plt.figure(num='%s %.2fA SP=%s MF=%s'%(name,line,SPName[spNum], MagName[magNum]))
-    imLevel2 = image[0,0:512,0:864,magNum]
-    plt.imshow(imLevel2)
-    plt.show()
+    #fig = plt.figure(1)
+    #plt.subplot(111)
+    #plt.title('%s %.2fA MF=%s'%(name, line, MagName[magNum]))
+    imLevel2S = image[0,0:YInv,0:XInv,0].copy()
+    imLevel2I = image[0,0:YInv,0:XInv,1].copy()
+    imLevel2A = image[0,0:YInv,0:XInv,2].copy()
+    #plt.imshow(imLevel2)
+    #plt.show()
+    #plt.close(fig)
+
+
