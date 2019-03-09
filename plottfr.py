@@ -73,6 +73,7 @@ with tf.Session() as sess:
                 plt.gray()
                 plt.imshow(imLevel1)
                 plt.show()
+                break
 
             imLevel2 = level2[i, 0:512,0:864,0]
             plt.imshow(imLevel2)
