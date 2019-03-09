@@ -5,7 +5,10 @@ from fs import open_fs
 
 dirsep = '/'
 csvdelim = ','
-basePath='/d/hinode/data/20120703_134836/level1'
+#basePath='/d/hinode/data/20120703_134836/level1'
+#20130114_123005
+basePath='/d/hinode/data/20180807_210006/level1'
+#basePath='/d/hinode/data'
 
 
 imageText = "image"
@@ -68,7 +71,7 @@ def process_sp3d(basePath):
   level = 0
   fsDetection = open_fs(basePath)
   img=np.empty((YDim,XDim))
-  for path in fsDetection.walk.files(filter=[inputText]):
+  for path in fsDetection.walk.files(filter=[inputText],exclude_dirs=['level2']):
     # process each "in" file of detections
     inName=basePath+path
     #open the warp warp diff image using "image" file
