@@ -10,7 +10,18 @@ csvdelim = ','
 #basePath='hao/web/csac.hao.ucar.edu/data/hinode/sot/level1/2012/10/21/SP3D'
 #basePath='hao/web/csac.hao.ucar.edu/data/hinode/sot/level1'
 #basePath='hao/web/csac.hao.ucar.edu/data/hinode/sot'
-basePath='/d/hinode/data'
+#basePath='/hinode/level2/2018/12/31/SP3D/20181231_180905'
+#basePath='/d/hinode/data'
+#basePath='/d/hinode/data/20150310_000005/level1'
+#basePath='/d/hinode/data/20130114_123005/level1'
+#basePath='/d/hinode/data/20140510_105533/level1'
+#basePath='/d/hinode/data/20120703_134836/level1'
+#basePath='/d/hinode/data/20181016_160105/level1'
+#basePath='/d/hinode/data/20130919_080417/level1'
+#basePath='/d/hinode/data/20181018_113305/level1'
+#basePath='/d/hinode/data/20181115_200536/level1'
+#basePath='/d/hinode/data/20190111_005305/level1'
+basePath='/d/hinode/data/20180807_210006/level1'
 imageText = "image"
 inputText = "*.fits"
 outputText = "out"
@@ -37,7 +48,7 @@ def chunkstring(string, length):
 #  return img
 
 def normalize(img, threshold):
-  val = np.percentile(img,threshold)
+  val = np.percentile(img[img.nonzero()],threshold)
   img = img / val
   return img
 
@@ -97,7 +108,7 @@ def process_sp3d(basePath):
   level = 0
   fsDetection = open_fs(basePath)
   img=np.empty((YDim,XDim))
-  for path in fsDetection.walk.files(filter=[inputText]):
+  for path in fsDetection.walk.files(filter=[inputText], exclude_dirs=['level2']):
     # process each "in" file of detections
     inName=basePath+path
     #print('Inspecting %s'%(inName))
@@ -140,6 +151,9 @@ def process_sp3d(basePath):
       level = 1
       x = int(imageMeta['SLITINDX'])
       wl = float(imageMeta['CRVAL1'])
+      if x == 0:
+        print('Y Center = %f'%(float(imageMeta['YCEN'])))
+        print('X Center = %f'%(float(imageMeta['XCEN'])))
       dimZ, dimY, dimX = imageData.shape
       # concatenate the next column of data
     #if imageData.shape[1] == YDim:
@@ -158,7 +172,12 @@ def process_sp3d(basePath):
 for image, name, level, line in process_sp3d(basePath):
   #outFileHandle=open(trainCSV,'wt')
   #outFileHandle.close()
+  nz = image.nonzero()
   image = normalize(image, 95)
+  print('image pixel 95 percentile = %f'%(np.percentile(image[nz], 95.0)))
+  print('image pixel 10 percentile = %f'%(np.percentile(image[nz], 10.0)))
+  print('image pixel mean = %f'%(np.mean(image[nz])))
+  print('image pixel std = %f'%(np.std(image[nz])))
   if level==1:
     fig = plt.figure(num='%s Level %d %.2fA SP=%s'%(name,level,line,SPName[spNum]))
   else:
