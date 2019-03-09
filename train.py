@@ -25,22 +25,23 @@ YMagfld=512
 ZMagfld=3
 
 sizeBatch=2
-nEpochs=50
-nExamples=100
+nEpochs=20
+nExamples=470
 
 pathTrain = '../data/train.tfr'  # The TFRecord file containing the training set
 pathValid = '../data/val.tfr'    # The TFRecord file containing the validation set
 pathTest = '../data/test.tfr'    # The TFRecord file containing the test set
-pathWeight = '../data/test3.h5'  # The HDF5 weight file generated for the trained model
-pathModel = '../data/test3.nn'  # The model saved as a JSON file
+pathWeight = '../data/3d3d.h5'  # The HDF5 weight file generated for the trained model
+pathModel = '../data/3d3d.nn'  # The model saved as a JSON file
 
 def UNet():
   inputs = Input((WStokes, YDim, XDim, ZStokes))
-  conv1 = Conv3D(32, (WDim, 3, 3), activation='relu', padding='same')(inputs)
+  conv1 = Conv3D(32, (WDim, 5, 5), activation='relu', padding='same')(inputs)
+  conv1 = Conv3D(32, (WDim, 5, 5), activation='relu', padding='same')(conv1)
   conv1 = MaxPooling3D(pool_size=(WDim, 1, 1))(conv1)
   conv1 = Reshape((YDim, XDim, 32))(conv1)
-  conv1 = Conv2D(32, (3, 3), activation='relu', padding='same')(conv1)
-  #pool1 = Reshape((YDim, XDim, WDim*ZStokes))(pool1)
+  conv1 = Conv2D(32, (5, 5), activation='relu', padding='same')(conv1)
+  conv1 = Conv2D(32, (5, 5), activation='relu', padding='same')(conv1)
   pool1 = MaxPooling2D(pool_size=(2, 2))(conv1)
 
   conv2 = Conv2D(64, (3, 3), activation='relu', padding='same')(pool1)
@@ -71,14 +72,16 @@ def UNet():
   conv8 = Conv2D(64, (3, 3), activation='relu', padding='same')(conv8)
 
   up9 = concatenate([Conv2DTranspose(32, (2, 2), strides=(2, 2), padding='same')(conv8), conv1], axis=3)
-  conv9 = Conv2D(32, (3, 3), activation='relu', padding='same')(up9)
-  conv9 = Conv2D(32, (3, 3), activation='relu', padding='same')(conv9)
+  conv9 = Conv2D(32, (5, 5), activation='relu', padding='same')(up9)
+  conv9 = Conv2D(32, (5, 5), activation='relu', padding='same')(conv9)
 
   conv10 = Conv2D(ZMagfld, (1, 1), activation='linear')(conv9)
 
   model = Model(inputs=[inputs], outputs=[conv10])
 
-  model.compile(optimizer=Adam(lr=1e-5), loss='mse', metrics=['mse'])
+  model.compile(optimizer=Adam(lr=1e-3), loss='mse', metrics=['mse'])
+
+  print(model.summary())
 
   return model
 
