@@ -37,13 +37,14 @@ def chunkstring(string, length):
 
 # filter images on mean level 1 intensity pixel value and position on sun
 # True means don't use the image and False means OK to use the image
-def isFiltered(img, nz, meta):
-  if np.std(img[nz]) >= 0.07:
-    yc = float(meta['YCEN'])
-    if yc >= -300.0 and yc <= 300.0:
-      xc = float(meta['XCEN'])
-      if xc >= -700.0 and xc <= 700.0:
-        return False
+def isFiltered(img, nnz, nz, meta):
+  if nnz >= 160000:
+    if np.std(img[nz]) >= 0.075:
+      yc = float(meta['YCEN'])
+      if yc >= -600.0 and yc <= 600.0:
+        xc = float(meta['XCEN'])
+        if xc >= -700.0 and xc <= 700.0:
+          return False
   return True
 
 def normalize(img, nz, threshold):
@@ -75,13 +76,16 @@ def load_fits(filnam):
         meta[mm[0].strip()] = mm[1].strip()
   nAxes = int(meta['NAXIS'])
   if nAxes == 0:
-    # should be checking metadata to verify this is a LEVEL1 image
+    # should be checking metadata to verify this is a level2 image
     nAxes = 3
-    maxy, maxx = hdulist[1].data.shape
-    data = np.empty((maxy, maxx, 3))
-    data[:,:,0] = hdulist[1].data
-    data[:,:,1] = hdulist[2].data
-    data[:,:,2] = hdulist[3].data
+    if len(hdulist[1].data.shape) < 2:
+      data = np.empty((1, 1, 3))
+    else:
+      maxy, maxx = hdulist[1].data.shape
+      data = np.empty((maxy, maxx, 3))
+      data[:,:,0] = hdulist[1].data
+      data[:,:,1] = hdulist[2].data
+      data[:,:,2] = hdulist[3].data
   else:
     data = hdulist[0].data
   data = np.nan_to_num(data)
@@ -100,6 +104,7 @@ def load_fits(filnam):
 def process_sp3d(basePath):
   prevImageName=''
   level = 0
+  skipping = False
   fsDetection = open_fs(basePath)
   img=np.empty((WDim,YDim,XDim,ZDim))
   WInd = list(range(WStart,WStart+WDim*WStep,WStep))
@@ -113,9 +118,12 @@ def process_sp3d(basePath):
     if imageName != prevImageName:
       if prevImageName != '':
         # New image so wrap up the current image
-        # Flip image Y axis
-        img = np.flip(img, axis=1)
-        yield img, fitsName, level, wl, meta
+        # if not skipping it's ok to release the prior images for further processing
+        if not skipping:
+          # Flip image Y axis
+          img = np.flip(img, axis=1)
+          yield img, fitsName, level, wl, meta
+        skipping = False
       # Initialize for a new image
       #print('Parsing %s - %s'%(imageName, path))
       prevImageName = imageName
@@ -130,7 +138,15 @@ def process_sp3d(basePath):
     #imageFile=byteArray.decode()
     imageFile=inName
     #print("Opening image file %s"%(imageFile))
+    # if level2 was skipped then skip level1 as well
+    if skipping:
+      print('Skipping %s'%(imageName))
+      continue
     height, width, depth, imageMeta, imageData = load_fits(imageFile)
+    if height == 1 and width == 1:
+      print('Skipping %s'%(imageName))
+      skipping = True
+      continue
     # now the pixels are in the array imageData shape height X width X 1
     # read the truth table from the "out" file
     #for k, v in imageMeta.items():
@@ -181,8 +197,9 @@ def process_sp3d(basePath):
   if prevImageName != '':
     # New image so wrap up the current image
     # Flip image Y axis
-    img = np.flip(img, axis=1)
-    yield img, fitsName, level, wl, meta
+    if not skipping:
+      img = np.flip(img, axis=1)
+      yield img, fitsName, level, wl, meta
     fsDetection.close()
   
 def _floatvector_feature(value):
@@ -229,13 +246,15 @@ for image, name, level, line, meta in process_sp3d(basePath):
     nz1 = image[:,:,:,1].nonzero()
     nz2 = image[:,:,:,2].nonzero()
     nz3 = image[:,:,:,3].nonzero()
-    img[:,:,:,0] = normalize(image[:,:,:,0], nz0, 95.0)
-    img[:,:,:,1] = normalize(image[:,:,:,1], nz1, 95.0)
-    img[:,:,:,2] = normalize(image[:,:,:,2], nz2, 95.0)
-    img[:,:,:,3] = normalize(image[:,:,:,3], nz3, 95.0)
+    #img[:,:,:,0] = normalize(image[:,:,:,0], nz0, 95.0)
+    #img[:,:,:,1] = normalize(image[:,:,:,1], nz1, 95.0)
+    #img[:,:,:,2] = normalize(image[:,:,:,2], nz2, 95.0)
+    #img[:,:,:,3] = normalize(image[:,:,:,3], nz3, 95.0)
+    img = image
     img_filt = image[0,:,:,0]
-    nz_filt = img_filt.nonzero()
-    if isFiltered(img_filt, nz_filt, meta):
+    nz_filt = np.nonzero(img_filt)
+    nnz_filt = np.count_nonzero(img_filt)
+    if isFiltered(img_filt, nnz_filt, nz_filt, meta):
       print(name, level, line, 'Filtered')
       nExamples -= 1
     else:
@@ -274,5 +293,6 @@ train_writer.close()
 val_writer.close()
 test_writer.close()
 print('%d examples: %03.1f%% train, %03.1f%%validate, %03.1f%%test.'%(nExamples, 100.0*nTrain/nExamples, 100.0*nVal/nExamples, 100.0*nTest/nExamples))
+print('%d examples: %d train, %d validate, %d test.'%(nExamples, nTrain, nVal, nTest))
 sys.stdout.flush()
 
