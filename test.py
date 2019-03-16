@@ -38,9 +38,8 @@ SPName = ['I', 'Q', 'U', 'V' ]
 MagName = ['Strength', 'Inclination', 'Azimuth']
 line=6302.8
 
-def showInversion(imLevel1I, imLevel1Q, imLevel1U, imLevel1V, imLevel2S, imLevel2I, imLevel2A, imPredictS, imPredictI, imPredictA):
+def showInversion(name, imLevel1I, imLevel1Q, imLevel1U, imLevel1V, imLevel2S, imLevel2I, imLevel2A, imPredictS, imPredictI, imPredictA):
     # prepare to visualize
-    name=''
     plt.gray()
     fig1 = plt.figure(1)
     #fig1.suptitle('%s Level 1'%(name), fontsize=14)
@@ -86,7 +85,8 @@ def showInversion(imLevel1I, imLevel1Q, imLevel1U, imLevel1V, imLevel2S, imLevel
 with tf.Session() as sess:
     feature = {
         'magfld': tf.FixedLenSequenceFeature(shape=[], dtype=tf.float32, allow_missing=True),
-        'stokes': tf.FixedLenSequenceFeature(shape=[], dtype=tf.float32, allow_missing=True)
+        'stokes': tf.FixedLenSequenceFeature(shape=[], dtype=tf.float32, allow_missing=True),
+        'name':   tf.FixedLenFeature(shape=[], dtype=tf.string)
       }
         
     # Create a list of filenames and pass it to a queue
@@ -111,10 +111,12 @@ with tf.Session() as sess:
     y = tf.slice(y, (0, 0, 0), (YDim, XDim, ZMagfld))
     #y = tf.cast(features['train/period'], tf.float32)
     
+    name = features['name']
+
     # Any preprocessing here ...
     
     # Creates batches by randomly shuffling tensors
-    X, Y = tf.train.batch([x, y], batch_size=batchSize)
+    X, Y, Name = tf.train.batch([x, y, name], batch_size=batchSize)
 
     # Initialize all global and local variables
     init_op = tf.group(tf.global_variables_initializer(), tf.local_variables_initializer())
@@ -143,7 +145,7 @@ with tf.Session() as sess:
 
     # Now we read batches of images and labels and plot them
     for batch_index in range(batchN):
-        level1, level2 = sess.run([X, Y])
+        level1, level2, fname = sess.run([X, Y, Name])
         # forward pass through the model to invert the Level 1 SP images and predict the Level 2 image mag fld maps
         inversion = model.predict(level1, batchSize, verbose=1)
 
@@ -164,7 +166,7 @@ with tf.Session() as sess:
             imLevel2I = level2[i,0:YInv,0:XInv,1]
             imLevel2A = level2[i,0:YInv,0:XInv,2]
 
-            showInversion(imLevel1I, imLevel1Q, imLevel1U, imLevel1V, imLevel2S, imLevel2I, imLevel2A, imPredictS, imPredictI, imPredictA)
+            showInversion(fname, imLevel1I, imLevel1Q, imLevel1U, imLevel1V, imLevel2S, imLevel2I, imLevel2A, imPredictS, imPredictI, imPredictA)
 
 
     # Stop the threads
