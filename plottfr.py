@@ -22,12 +22,13 @@ pathValid = '../data/val.tfr'    # The TFRecord file containing the validation s
 pathTest = '../data/test.tfr'    # The TFRecord file containing the test set
 
 batchSize=6
-batchN=1
+batchN=10
 
 with tf.Session() as sess:
     feature = {
         'magfld': tf.FixedLenSequenceFeature(shape=[], dtype=tf.float32, allow_missing=True),
-        'stokes': tf.FixedLenSequenceFeature(shape=[], dtype=tf.float32, allow_missing=True)
+        'stokes': tf.FixedLenSequenceFeature(shape=[], dtype=tf.float32, allow_missing=True),
+        'name':   tf.FixedLenFeature(shape=[], dtype=tf.string)
       }
         
     # Create a list of filenames and pass it to a queue
@@ -52,10 +53,11 @@ with tf.Session() as sess:
     y = tf.slice(y, (0, 0, 0), (YDim, XDim, ZMagfld))
     #y = tf.cast(features['train/period'], tf.float32)
     
+    name = features['name']
     # Any preprocessing here ...
     
     # Creates batches by randomly shuffling tensors
-    X, Y = tf.train.batch([x, y], batch_size=batchSize)
+    X, Y, Name = tf.train.batch([x, y, name], batch_size=batchSize)
 
     # Initialize all global and local variables
     init_op = tf.group(tf.global_variables_initializer(), tf.local_variables_initializer())
@@ -66,18 +68,25 @@ with tf.Session() as sess:
 
     # Now we read batches of images and labels and plot them
     for batch_index in range(batchN):
-        level1, level2 = sess.run([X, Y])
+        level1, level2, fname = sess.run([X, Y, Name])
         for i in range(X.shape[0]):
             for j in range(X.shape[1]):
                 imLevel1 = level1[i,j,0:512,0:864,0]
+                nz = np.nonzero(imLevel1)
+                print('file = %s'%(fname[i]))
+                print('image pixel 95 percentile = %f'%(np.percentile(imLevel1[nz], 95.0)))
+                print('image pixel 10 percentile = %f'%(np.percentile(imLevel1[nz], 10.0)))
+                print('image pixel mean = %f'%(np.mean(imLevel1[nz])))
+                print('image pixel std = %f'%(np.std(imLevel1[nz])))
                 plt.gray()
                 plt.imshow(imLevel1)
+                plt.title(fname[i])
                 plt.show()
                 break
 
-            imLevel2 = level2[i, 0:512,0:864,0]
-            plt.imshow(imLevel2)
-            plt.show()
+            #imLevel2 = level2[i, 0:512,0:864,0]
+            #plt.imshow(imLevel2)
+            #plt.show()
 
 
     # Stop the threads
