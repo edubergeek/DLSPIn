@@ -6,6 +6,7 @@ from tensorflow.keras.models import Model
 from tensorflow.keras.models import model_from_yaml
 from tensorflow.keras.optimizers import Adam
 
+Version='v1-1'
 XDim=864
 YDim=512
 ZDim=4
@@ -25,11 +26,11 @@ XMagfld=875
 YMagfld=512
 ZMagfld=3
 
-pathTrain = '../data/train.tfr'  # The TFRecord file containing the training set
-pathValid = '../data/val.tfr'    # The TFRecord file containing the validation set
-pathTest = '../data/test.tfr'    # The TFRecord file containing the test set
-pathWeight = '../data/3d3d.h5'  # The HDF5 weight file generated for the trained model
-pathModel = '../data/3d3d.nn'  # The model saved as a JSON file
+pathTrain = './data/train.tfr'  # The TFRecord file containing the training set
+pathValid = './data/val.tfr'    # The TFRecord file containing the validation set
+pathTest = './data/test.tfr'    # The TFRecord file containing the test set
+pathWeight = './data/%s.h5'%(Version)  # The HDF5 weight file generated for the trained model
+pathModel = './data/%s.nn'%(Version)   # The model saved as a JSON file
 
 batchSize=2
 batchN=45
