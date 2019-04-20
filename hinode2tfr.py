@@ -9,28 +9,32 @@ import tensorflow as tf
 
 dirsep = '/'
 csvdelim = ','
-basePath='/d/hinode/data'
+#basePath='/d/hinode/data'
+basePath='./data'
 imageText = "image"
 inputText = "*.fits"
 outputText = "out"
 trainCSV = "./spin.csv"
+
+printName = False
+
 xdim=32
 ydim=32
 XDim=875
 YDim=512
 ZDim=4
 
-WDim=9
+WDim=15
 WStart=0
-WStep=5
+WStep=3
 
 pTest = 0.1
-pVal = 0.1
+pVal = 0.2
 nCopies=1
 
-train_filename = '../data/train.tfr'  # the TFRecord file containing the training set
-val_filename = '../data/val.tfr'      # the TFRecord file containing the validation set
-test_filename = '../data/test.tfr'    # the TFRecord file containing the test set
+train_filename = './data/train.tfr'  # the TFRecord file containing the training set
+val_filename = './data/val.tfr'      # the TFRecord file containing the validation set
+test_filename = './data/test.tfr'    # the TFRecord file containing the test set
 
 def chunkstring(string, length):
   return (string[0+i:length+i] for i in range(0, len(string), length))
@@ -137,11 +141,12 @@ def process_sp3d(basePath):
     #byteArray=bytearray(np.genfromtxt(imgName, 'S'))
     #imageFile=byteArray.decode()
     imageFile=inName
-    #print("Opening image file %s"%(imageFile))
     # if level2 was skipped then skip level1 as well
     if skipping:
       print('Skipping %s'%(imageName))
       continue
+    if printName:
+      print("Opening image file %s"%(imageFile))
     height, width, depth, imageMeta, imageData = load_fits(imageFile)
     if height == 1 and width == 1:
       print('Skipping %s'%(imageName))
@@ -238,6 +243,8 @@ for image, name, level, line, meta in process_sp3d(basePath):
     # image is the level2 magnetic field prediction per pixel (Y)
     ya=np.reshape(image[0,0:YDim,0:XDim,0:3],(YDim*XDim*3))
     nExamples += 1
+    #if nExamples > 768:
+    #  printName = True
     print(nExamples, name, level, line)
   else:
     # image is the level1 Stokes params for several WLs of the line of interest (X)
