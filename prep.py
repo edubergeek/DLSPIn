@@ -13,21 +13,30 @@ csvdelim = ','
 #basePath='/hinode/level2/2018/12/31/SP3D/20181231_180905'
 #basePath='/d/hinode/data'
 #basePath='/d/hinode/data/20150310_000005/level1'
-#basePath='/d/hinode/data/20130114_123005/level1'
+#basePath='/d/hinode/spin/data/20130114_123005/level1'
 #basePath='/d/hinode/data/20140510_105533/level1'
-#basePath='/d/hinode/data/20120703_134836/level1'
+#basePath='/d/hinode/spin/data/20120703_134836/level1'
 #basePath='/d/hinode/data/20181016_160105/level1'
 #basePath='/d/hinode/data/20130919_080417/level1'
 #basePath='/d/hinode/data/20181018_113305/level1'
 #basePath='/d/hinode/data/20181115_200536/level1'
 #basePath='/d/hinode/data/20190111_005305/level1'
-basePath='/d/hinode/data/20180807_210006/level1'
+#basePath='/d/hinode/data/20180807_210006/level1'
+#basePath='/d/hinode/spin/data/20140202_041505/level1'
+#basePath='/d/hinode/spin/data/20160713_163311/level1'
+#basePath='/d/hinode/spin/data/20160210_034023/level1'
+#basePath='/d/hinode/spin/data/20141120_190005/level1'
+#basePath='/d/hinode/spin/data/20121012_223606/level1'
+#basePath='/d/hinode/spin/data/20140610_001635/level1'
+basePath='./data/20120306_221040/level1'
 imageText = "image"
 inputText = "*.fits"
 outputText = "out"
 trainCSV = "./spin.csv"
-xdim=32
-ydim=32
+
+xdim=64
+ydim=64
+
 XDim=875
 YDim=512
 
