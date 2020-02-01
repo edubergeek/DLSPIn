@@ -81,3 +81,22 @@ Edit parameters at the top of train.py to set:
   sizeBatch is the batch size
   nEpochs is the number of epochs to train
 
+invert.py - Invert arbitrary size Hinode images using sliding windows of 64x64 patches
+Input directory containing Hinode SOT SP FITS files (level 1)
+  ./invert
+Outputs magnetograms for each level 1 file found in the input directory
+Edit image position and size parameters in invert.py
+Optionally plot kernel density estimates
+Optionally convert cartesian to spherical magnetic field coordinates
+Model,Version,Checkpoint control which trained SPIN model to use.
+nPatch=2 use sliding window (64/2 = 32 pixels); nPatch=1 no sliding windows but faster
+plotWL[iquv] determines which wavelength bin to plot
+Around line 797 
+xlim, ylim control the crop rectangle to plot
+showColorbar, showTitle, showTicks controls plotting outputs
+colormap controls the plot color scheme
+
+## FUTURE WORK
+
+run inference on 2 Hinode samples from SICON paper (were they held out of training? validation?)
+
