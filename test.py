@@ -6,16 +6,16 @@ from tensorflow.keras.models import Model
 from tensorflow.keras.models import model_from_yaml
 from tensorflow.keras.optimizers import Adam
 
-Version='v1-1'
+Version='v3-1'
 XDim=864
 YDim=512
 ZDim=4
-WDim=9
+WDim=15
 
 XInv=864
 YInv=512
 ZInv=4
-WInv=9
+WInv=15
 
 XStokes=875
 YStokes=512
