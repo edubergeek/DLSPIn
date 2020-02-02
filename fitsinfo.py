@@ -7,8 +7,9 @@ dirsep = '/'
 csvdelim = ','
 #basePath='/d/hinode/data/20120703_134836/level1'
 #20130114_123005
-basePath='/d/hinode/data/20180807_210006/level1'
+#basePath='./data/20180807_210006/level1'
 #basePath='/d/hinode/data'
+basePath='/data/hinode/level1/2007/01/05/SP3D/20070105_112009'
 
 
 imageText = "image"

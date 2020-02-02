@@ -6,23 +6,23 @@ import matplotlib.pyplot as plt
 XDim=864
 YDim=512
 ZDim=4
-WDim=9
+WDim=112
 
 XStokes=875
 YStokes=512
 ZStokes=4
-WStokes=9
+WStokes=112
 
 XMagfld=875
 YMagfld=512
 ZMagfld=3
 
-pathTrain = '../data/train.tfr'  # The TFRecord file containing the training set
-pathValid = '../data/val.tfr'    # The TFRecord file containing the validation set
-pathTest = '../data/test.tfr'    # The TFRecord file containing the test set
+pathTrain = './data/trn-x.tfr'  # The TFRecord file containing the training set
+pathValid = './data/val-x.tfr'    # The TFRecord file containing the validation set
+pathTest = './data/tst-x.tfr'    # The TFRecord file containing the test set
 
-batchSize=6
-batchN=10
+batchSize=1
+batchN=75
 
 with tf.Session() as sess:
     feature = {
@@ -66,23 +66,65 @@ with tf.Session() as sess:
     coord = tf.train.Coordinator()
     threads = tf.train.start_queue_runners(coord=coord)
 
+    print('file,WL,I 95PCTL,10PCTL,Min,Max,Mean,Std,',end='')
+    print('Q 95PCTL,10PCTL,Min,Max,Mean,Std,',end='')
+    print('U 95PCTL,10PCTL,Min,Max,Mean,Std,',end='')
+    print('V 95PCTL,10PCTL,Min,Max,Mean,Std')
     # Now we read batches of images and labels and plot them
     for batch_index in range(batchN):
         level1, level2, fname = sess.run([X, Y, Name])
         for i in range(X.shape[0]):
             for j in range(X.shape[1]):
-                imLevel1 = level1[i,j,0:512,0:864,0]
-                nz = np.nonzero(imLevel1)
-                print('file = %s'%(fname[i]))
-                print('image pixel 95 percentile = %f'%(np.percentile(imLevel1[nz], 95.0)))
-                print('image pixel 10 percentile = %f'%(np.percentile(imLevel1[nz], 10.0)))
-                print('image pixel mean = %f'%(np.mean(imLevel1[nz])))
-                print('image pixel std = %f'%(np.std(imLevel1[nz])))
-                plt.gray()
-                plt.imshow(imLevel1)
-                plt.title(fname[i])
-                plt.show()
-                break
+                print(fname[i],end='')
+                imI = level1[i,j,0:512,0:864,0]
+                nz = np.nonzero(imI)
+                #plt.gray()
+                #plt.imshow(imI)
+                #plt.title(fname[i])
+                #plt.show()
+                print('%d,'%(j), end='')
+                print('%f,'%(np.percentile(imI[nz], 95.0)), end='')
+                print('%f,'%(np.percentile(imI[nz], 10.0)), end='')
+                print('%f,'%(np.min(imI[nz])), end='')
+                print('%f,'%(np.max(imI[nz])), end='')
+                print('%f,'%(np.mean(imI[nz])), end='')
+                print('%f,'%(np.std(imI[nz])), end='')
+                imQ = level1[i,j,0:512,0:864,1]
+                nz = np.nonzero(imQ)
+                #plt.gray()
+                #plt.imshow(imQ)
+                #plt.title(fname[i])
+                #plt.show()
+                print('%f,'%(np.percentile(imQ[nz], 95.0)), end='')
+                print('%f,'%(np.percentile(imQ[nz], 10.0)), end='')
+                print('%f,'%(np.min(imQ[nz])), end='')
+                print('%f,'%(np.max(imQ[nz])), end='')
+                print('%f,'%(np.mean(imQ[nz])), end='')
+                print('%f,'%(np.std(imQ[nz])), end='')
+                imU = level1[i,j,0:512,0:864,2]
+                nz = np.nonzero(imU)
+                #plt.gray()
+                #plt.imshow(imU)
+                #plt.title(fname[i])
+                #plt.show()
+                print('%f,'%(np.percentile(imU[nz], 95.0)), end='')
+                print('%f,'%(np.percentile(imU[nz], 10.0)), end='')
+                print('%f,'%(np.min(imU[nz])), end='')
+                print('%f,'%(np.max(imU[nz])), end='')
+                print('%f,'%(np.mean(imU[nz])), end='')
+                print('%f,'%(np.std(imU[nz])), end='')
+                imV = level1[i,j,0:512,0:864,3]
+                nz = np.nonzero(imV)
+                #plt.gray()
+                #plt.imshow(imV)
+                #plt.title(fname[i])
+                #plt.show()
+                print('%f,'%(np.percentile(imV[nz], 95.0)), end='')
+                print('%f,'%(np.percentile(imV[nz], 10.0)), end='')
+                print('%f,'%(np.min(imV[nz])), end='')
+                print('%f,'%(np.max(imV[nz])), end='')
+                print('%f,'%(np.mean(imV[nz])), end='')
+                print('%f'%(np.std(imV[nz])))
 
             #imLevel2 = level2[i, 0:512,0:864,0]
             #plt.imshow(imLevel2)
