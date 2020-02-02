@@ -1,0 +1,8 @@
+/log
+/model
+/data
+/invert
+/*.out
+/*.csv
+/*.tar
+/*.tgz
