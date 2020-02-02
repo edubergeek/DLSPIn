@@ -1,8 +1,10 @@
 /log
 /model
 /data
+/tfr
 /invert
 /*.out
+/*.err
 /*.csv
 /*.tar
 /*.tgz
