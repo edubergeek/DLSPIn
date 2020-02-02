@@ -10,7 +10,7 @@ from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.callbacks import ModelCheckpoint
 from tensorflow.keras import backend as K
 
-Version='v3-1'
+Version='v3-2'
 XDim=864
 YDim=512
 ZDim=4
@@ -30,9 +30,9 @@ nEpochs=15
 nExamples=4200
 nValid=1200
 
-pathTrain = './data/train.tfr'  # The TFRecord file containing the training set
-pathValid = './data/val.tfr'    # The TFRecord file containing the validation set
-pathTest = './data/test.tfr'    # The TFRecord file containing the test set
+pathTrain = '/data/hinode/tfr/train.tfr'  # The TFRecord file containing the training set
+pathValid = '/data/hinode/tfr/val.tfr'    # The TFRecord file containing the validation set
+pathTest = '/data/hinode/tfr/test.tfr'    # The TFRecord file containing the test set
 pathWeight = './data/%s.h5'%(Version)  # The HDF5 weight file generated for the trained model
 pathModel = './data/%s.nn'%(Version)  # The model saved as a JSON file
 pathLog = '../logs/%s'%(Version)  # The training log
@@ -100,7 +100,7 @@ def UNet():
 
   model = Model(inputs=[inputs], outputs=[conv12])
 
-  model.compile(optimizer=Adam(lr=1e-3), loss='mse', metrics=['mse'])
+  model.compile(optimizer=Adam(lr=3e-4), loss='mse', metrics=['mse'])
 
   print(model.summary())
 
