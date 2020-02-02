@@ -10,7 +10,7 @@ from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.callbacks import ModelCheckpoint
 from tensorflow.keras import backend as K
 
-Version='v3-2'
+Version='v4-1'
 XDim=864
 YDim=512
 ZDim=4
@@ -25,8 +25,8 @@ XMagfld=875
 YMagfld=512
 ZMagfld=3
 
-sizeBatch=2
-nEpochs=15
+sizeBatch=4
+nEpochs=10
 nExamples=4200
 nValid=1200
 
@@ -46,61 +46,65 @@ def UNet():
   #conv1 = BatchNormalization()(conv1)
   #conv1 = Activation("relu")(conv1)
   #conv1 = Conv3D(32, (WDim, 1, 1), activation='relu', padding='same')(inputs)
-  conv1 = Conv3D(16, (WDim, 3, 3), activation='relu', padding='same')(inputs)
-  conv1 = Conv3D(16, (WDim, 3, 3), activation='relu', padding='same')(conv1)
-  conv1 = Conv3D(16, (WDim, 3, 3), activation='relu', padding='same')(conv1)
+  conv1 = Conv3D(32, (WDim, 3, 3), activation='relu', padding='same')(inputs)
   #conv1 = Conv3D(16, (WDim, 3, 3), activation='relu', padding='same')(conv1)
   #conv1 = Conv3D(16, (WDim, 3, 3), activation='relu', padding='same')(conv1)
   conv1 = MaxPooling3D(pool_size=(WDim, 1, 1))(conv1)
-  conv1 = Reshape((YDim, XDim, 16))(conv1)
-  conv1 = Conv2D(32, (3, 3), activation='relu', padding='same')(conv1)
-  conv1 = Conv2D(32, (3, 3), activation='relu', padding='same')(conv1)
+  conv1 = Reshape((YDim, XDim, 32))(conv1)
+  conv1 = Conv2D(64, (3, 3), activation='relu', padding='same')(conv1)
+  conv1 = Conv2D(64, (3, 3), activation='relu', padding='same')(conv1)
   pool1 = MaxPooling2D(pool_size=(2, 2))(conv1)
 
-  conv2 = Conv2D(32, (3, 3), activation='relu', padding='same')(pool1)
-  conv2 = Conv2D(32, (3, 3), activation='relu', padding='same')(conv2)
-  pool2 = MaxPooling2D(pool_size=(2, 2))(conv2)
+  #conv2 = Conv2D(32, (3, 3), activation='relu', padding='same')(pool1)
+  #conv2 = Conv2D(32, (3, 3), activation='relu', padding='same')(conv2)
+  #pool2 = MaxPooling2D(pool_size=(2, 2))(conv2)
 
-  conv3 = Conv2D(64, (3, 3), activation='relu', padding='same')(pool2)
-  conv3 = Conv2D(64, (3, 3), activation='relu', padding='same')(conv3)
-  pool3 = MaxPooling2D(pool_size=(2, 2))(conv3)
+  #conv3 = Conv2D(64, (3, 3), activation='relu', padding='same')(pool2)
+  #conv3 = Conv2D(64, (3, 3), activation='relu', padding='same')(conv3)
+  #pool3 = MaxPooling2D(pool_size=(2, 2))(conv3)
 
-  conv4 = Conv2D(64, (3, 3), activation='relu', padding='same')(pool3)
-  conv4 = Conv2D(64, (3, 3), activation='relu', padding='same')(conv4)
-  pool4 = MaxPooling2D(pool_size=(2, 2))(conv4)
+  #conv4 = Conv2D(64, (3, 3), activation='relu', padding='same')(pool3)
+  #conv4 = Conv2D(64, (3, 3), activation='relu', padding='same')(conv4)
+  #pool4 = MaxPooling2D(pool_size=(2, 2))(conv4)
 
-  conv5 = Conv2D(64, (3, 3), activation='relu', padding='same')(pool4)
-  conv5 = Conv2D(64, (3, 3), activation='relu', padding='same')(conv5)
-  pool5 = MaxPooling2D(pool_size=(2, 2))(conv5)
+  #conv5 = Conv2D(64, (3, 3), activation='relu', padding='same')(pool4)
+  #conv5 = Conv2D(64, (3, 3), activation='relu', padding='same')(conv5)
+  #pool5 = MaxPooling2D(pool_size=(2, 2))(conv5)
 
-  conv6 = Conv2D(128, (3, 3), activation='relu', padding='same')(pool5)
-  conv6 = Conv2D(128, (3, 3), activation='relu', padding='same')(conv6)
+  #conv6 = Conv2D(128, (3, 3), activation='relu', padding='same')(pool5)
+  #conv6 = Conv2D(128, (3, 3), activation='relu', padding='same')(conv6)
+  conv2 = Conv2D(256, (3, 3), activation='relu', padding='same')(pool1)
+  conv2 = Conv2D(256, (3, 3), activation='relu', padding='same')(conv2)
 
-  up7 = concatenate([Conv2DTranspose(128, (2, 2), strides=(2, 2), padding='same')(conv6), conv5], axis=3)
-  conv7 = Conv2D(128, (3, 3), activation='relu', padding='same')(up7)
-  conv7 = Conv2D(128, (3, 3), activation='relu', padding='same')(conv7)
+  up3 = concatenate([Conv2DTranspose(256, (2, 2), strides=(2, 2), padding='same')(conv2), conv1], axis=3)
+  conv3 = Conv2D(256, (3, 3), activation='relu', padding='same')(up3)
+  conv3 = Conv2D(256, (3, 3), activation='relu', padding='same')(conv3)
+  #up7 = concatenate([Conv2DTranspose(128, (2, 2), strides=(2, 2), padding='same')(conv6), conv5], axis=3)
+  #conv7 = Conv2D(128, (3, 3), activation='relu', padding='same')(up7)
+  #conv7 = Conv2D(128, (3, 3), activation='relu', padding='same')(conv7)
 
-  up8 = concatenate([Conv2DTranspose(64, (2, 2), strides=(2, 2), padding='same')(conv7), conv4], axis=3)
-  conv8 = Conv2D(64, (3, 3), activation='relu', padding='same')(up8)
-  conv8 = Conv2D(64, (3, 3), activation='relu', padding='same')(conv8)
+  #up8 = concatenate([Conv2DTranspose(64, (2, 2), strides=(2, 2), padding='same')(conv7), conv4], axis=3)
+  #conv8 = Conv2D(64, (3, 3), activation='relu', padding='same')(up8)
+  #conv8 = Conv2D(64, (3, 3), activation='relu', padding='same')(conv8)
 
-  up9 = concatenate([Conv2DTranspose(64, (2, 2), strides=(2, 2), padding='same')(conv8), conv3], axis=3)
-  conv9 = Conv2D(64, (3, 3), activation='relu', padding='same')(up9)
-  conv9 = Conv2D(64, (3, 3), activation='relu', padding='same')(conv9)
+  #up9 = concatenate([Conv2DTranspose(64, (2, 2), strides=(2, 2), padding='same')(conv8), conv3], axis=3)
+  #conv9 = Conv2D(64, (3, 3), activation='relu', padding='same')(up9)
+  #conv9 = Conv2D(64, (3, 3), activation='relu', padding='same')(conv9)
 
-  up10 = concatenate([Conv2DTranspose(64, (2, 2), strides=(2, 2), padding='same')(conv9), conv2], axis=3)
-  conv10 = Conv2D(64, (3, 3), activation='relu', padding='same')(up10)
-  conv10 = Conv2D(64, (3, 3), activation='relu', padding='same')(conv10)
+  #up10 = concatenate([Conv2DTranspose(64, (2, 2), strides=(2, 2), padding='same')(conv9), conv2], axis=3)
+  #conv10 = Conv2D(64, (3, 3), activation='relu', padding='same')(up10)
+  #conv10 = Conv2D(64, (3, 3), activation='relu', padding='same')(conv10)
 
-  up11 = concatenate([Conv2DTranspose(32, (2, 2), strides=(2, 2), padding='same')(conv10), conv1], axis=3)
-  conv11 = Conv2D(32, (3, 3), activation='relu', padding='same')(up11)
-  conv11 = Conv2D(32, (3, 3), activation='relu', padding='same')(conv11)
+  #up11 = concatenate([Conv2DTranspose(32, (2, 2), strides=(2, 2), padding='same')(conv10), conv1], axis=3)
+  #conv11 = Conv2D(32, (3, 3), activation='relu', padding='same')(up11)
+  #conv11 = Conv2D(32, (3, 3), activation='relu', padding='same')(conv11)
 
-  conv12 = Conv2D(ZMagfld, (1, 1), activation='linear')(conv11)
+  #conv12 = Conv2D(ZMagfld, (1, 1), activation='linear')(conv11)
+  conv4 = Conv2D(ZMagfld, (1, 1), activation='linear')(conv3)
 
-  model = Model(inputs=[inputs], outputs=[conv12])
+  model = Model(inputs=[inputs], outputs=[conv4])
 
-  model.compile(optimizer=Adam(lr=3e-4), loss='mse', metrics=['mse'])
+  model.compile(optimizer=Adam(lr=1e-5), loss='mse', metrics=['mse'])
 
   print(model.summary())
 
