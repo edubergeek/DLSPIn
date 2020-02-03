@@ -10,19 +10,19 @@ from tensorflow.keras.callbacks import ModelCheckpoint
 from tensorflow.keras.models import model_from_yaml
 from tensorflow.keras import backend as K
 
-Version='3d-v4-1'
+Version='3d-v5-3'
 doNormalize=True
 doWLConvolution=True
 doBatchNorm=False
-useCheckpoint=""
+useCheckpoint="3d-v5-2"
 useDropout=0.00
-baseChannels=12
+baseChannels=8
 filterSize=3
 #useLearningRate=5e-4
-useLearningRate=1e-3
-useBatchSize=40
-nEpochs=150
-startEpoch=0
+useLearningRate=1e-6
+useBatchSize=16
+nEpochs=200
+startEpoch=150
 
 XDim=64
 YDim=64
@@ -78,7 +78,7 @@ def UNetFromCheckpoint(checkpoint):
    
   # evaluate loaded model on test data
   #model.compile(optimizer=Adam(lr=1e-5), loss='mse', metrics=['mse'])
-  model.compile(optimizer=Adam(lr=useLearningRate), loss='mse', metrics=['mae', 'mse'])
+  model.compile(optimizer=Adam(lr=useLearningRate), loss='mae', metrics=['mae', 'mse'])
   
   return model
 
@@ -93,33 +93,35 @@ def UNet():
   if doWLConvolution:
     inputs = Input((WStokes, YDim, XDim, ZStokes))
     if doBatchNorm:
-      conv1 = Conv3D(int(2*features*baseChannels), (filterSize, filterSize, filterSize), activation='linear', padding='same', use_bias=False)(inputs)
+      conv1 = Conv3D(int(2*features*baseChannels), (1, 1, 1), activation='linear', padding='same', use_bias=False)(inputs)
       conv1 = BatchNormalization()(conv1)
       conv1 = Activation("relu")(conv1)
-      conv1 = Conv3D(int(features*baseChannels), (filterSize, filterSize, filterSize), activation='linear', padding='same', use_bias=False)(conv1)
+      conv1 = Conv3D(int(features*baseChannels), (1, 1, 1), activation='linear', padding='same', use_bias=False)(conv1)
       conv1 = BatchNormalization()(conv1)
       conv1 = Activation("relu")(conv1)
     else:
-      conv1 = Conv3D(int(2*features*baseChannels), (filterSize, filterSize, filterSize), activation='relu', padding='same')(inputs)
-      conv1 = Conv3D(int(features*baseChannels), (filterSize, filterSize, filterSize), activation='relu', padding='same')(conv1)
+      conv1 = Conv3D(int(2*features*baseChannels), (1, 1, 1), activation='relu', padding='same')(inputs)
+      conv1 = Conv3D(int(features*baseChannels), (1, 1, 1), activation='relu', padding='same')(conv1)
       if useDropout > 0:
         conv1 = Dropout(useDropout)(conv1)
-    pool1 = MaxPooling3D(pool_size=(2, 2, 2))(conv1)
+    pool1 = conv1
+    #pool1 = MaxPooling3D(pool_size=(2, 2, 2))(conv1)
   else:
     inputs = Input((YDim, XDim, WStokes*ZStokes))
     if doBatchNorm:
-      conv1 = Conv2D(int(2*features*baseChannels), (filterSize, filterSize), activation='linear', padding='same', use_bias=False)(inputs)
+      conv1 = Conv2D(int(2*features*baseChannels), (1, 1), activation='linear', padding='same', use_bias=False)(inputs)
       conv1 = BatchNormalization()(conv1)
       conv1 = Activation("relu")(conv1)
-      conv1 = Conv2D(int(features*baseChannels), (filterSize, filterSize), activation='linear', padding='same', use_bias=False)(conv1)
+      conv1 = Conv2D(int(features*baseChannels), (1, 1), activation='linear', padding='same', use_bias=False)(conv1)
       conv1 = BatchNormalization()(conv1)
       conv1 = Activation("relu")(conv1)
     else:
-      conv1 = Conv2D(int(2*features*baseChannels), (filterSize, filterSize), activation='relu', padding='same')(inputs)
-      conv1 = Conv2D(int(features*baseChannels), (filterSize, filterSize), activation='relu', padding='same')(conv1)
+      conv1 = Conv2D(int(2*features*baseChannels), (1, 1), activation='relu', padding='same')(inputs)
+      conv1 = Conv2D(int(features*baseChannels), (1, 1), activation='relu', padding='same')(conv1)
       if useDropout > 0:
         conv1 = Dropout(useDropout)(conv1)
-    pool1 = MaxPooling2D(pool_size=(2, 2))(conv1)
+    pool1 = conv1
+    #pool1 = MaxPooling2D(pool_size=(2, 2))(conv1)
 
 
   features=features*2
@@ -349,31 +351,31 @@ def UNet():
 
   features = features / 2
   if doWLConvolution:
-    up9 = concatenate([Conv3DTranspose(int(features*baseChannels), (2, 2, 2), strides=(2, 2, 2), padding='same')(conv8), conv1], axis=4)
+    up9 = concatenate([Conv3DTranspose(int(features*baseChannels), (1, 1, 1), strides=(1, 1, 1), padding='same')(conv8), conv1], axis=4)
     if doBatchNorm:
-      conv9 = Conv3D(int(features*baseChannels), (filterSize, filterSize, filterSize), activation='linear', padding='same', use_bias=False)(up9)
+      conv9 = Conv3D(int(features*baseChannels), (1, 1, 1), activation='linear', padding='same', use_bias=False)(up9)
       conv9 = BatchNormalization()(conv9)
       conv9 = Activation("relu")(conv9)
-      conv9 = Conv3D(int(features*baseChannels), (filterSize, filterSize, filterSize), activation='linear', padding='same', use_bias=False)(conv9)
+      conv9 = Conv3D(int(features*baseChannels), (1, 1, 1), activation='linear', padding='same', use_bias=False)(conv9)
       conv9 = BatchNormalization()(conv9)
       conv9 = Activation("relu")(conv9)
     else:
-      conv9 = Conv3D(int(features*baseChannels), (filterSize, filterSize, filterSize), activation='relu', padding='same')(up9)
-      conv9 = Conv3D(int(features*baseChannels), (filterSize, filterSize, filterSize), activation='relu', padding='same')(conv9)
+      conv9 = Conv3D(int(features*baseChannels), (1, 1, 1), activation='relu', padding='same')(up9)
+      conv9 = Conv3D(int(features*baseChannels), (1, 1, 1), activation='relu', padding='same')(conv9)
       if useDropout > 0:
         conv9 = Dropout(useDropout)(conv9)
   else:
-    up7 = concatenate([Conv2DTranspose(int(features*baseChannels), (2, 2), strides=(2, 2), padding='same')(conv8), conv1], axis=3)
+    up7 = concatenate([Conv2DTranspose(int(features*baseChannels), (1, 1), strides=(1, 1), padding='same')(conv8), conv1], axis=3)
     if doBatchNorm:
-      conv9 = Conv2D(int(features*baseChannels), (filterSize, filterSize), activation='linear', padding='same', use_bias=False)(up9)
+      conv9 = Conv2D(int(features*baseChannels), (1, 1), activation='linear', padding='same', use_bias=False)(up9)
       conv9 = BatchNormalization()(conv9)
       conv9 = Activation("relu")(conv9)
-      conv9 = Conv2D(int(features*baseChannels), (filterSize, filterSize), activation='linear', padding='same', use_bias=False)(conv9)
+      conv9 = Conv2D(int(features*baseChannels), (1, 1), activation='linear', padding='same', use_bias=False)(conv9)
       conv9 = BatchNormalization()(conv9)
       conv9 = Activation("relu")(conv9)
     else:
-      conv9 = Conv2D(int(features*baseChannels), (filterSize, filterSize), activation='relu', padding='same')(up9)
-      conv9 = Conv2D(int(features*baseChannels), (filterSize, filterSize), activation='relu', padding='same')(conv9)
+      conv9 = Conv2D(int(features*baseChannels), (1, 1), activation='relu', padding='same')(up9)
+      conv9 = Conv2D(int(features*baseChannels), (1, 1), activation='relu', padding='same')(conv9)
       if useDropout > 0:
         conv9 = Dropout(useDropout)(conv9)
 
