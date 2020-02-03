@@ -4,25 +4,26 @@ import matplotlib.pyplot as plt
 
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Input, concatenate, Conv2D, MaxPooling2D, Conv2DTranspose, Reshape, Dropout
-from tensorflow.keras.layers import Conv3D, Conv3DTranspose, MaxPooling3D, BatchNormalization, Activation
+from tensorflow.keras.layers import Conv3D, Conv3DTranspose, MaxPooling3D, BatchNormalization, Activation, LeakyReLU
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.callbacks import ModelCheckpoint
 from tensorflow.keras.models import model_from_yaml
 from tensorflow.keras import backend as K
 
-Version='3d-v5-3'
+Version='2d-v8-1'
 doNormalize=True
 doWLConvolution=True
 doBatchNorm=False
-useCheckpoint="3d-v5-2"
-useDropout=0.00
-baseChannels=8
+useCheckpoint=""
+useDropout=0.0
+useLeakyReLU=0.3
+baseChannels=16
 filterSize=3
-#useLearningRate=5e-4
-useLearningRate=1e-6
+useLearningRate=1e-5
+#useLearningRate=1e-6
 useBatchSize=16
-nEpochs=200
-startEpoch=150
+nEpochs=150
+startEpoch=0
 
 XDim=64
 YDim=64
@@ -93,35 +94,64 @@ def UNet():
   if doWLConvolution:
     inputs = Input((WStokes, YDim, XDim, ZStokes))
     if doBatchNorm:
-      conv1 = Conv3D(int(2*features*baseChannels), (1, 1, 1), activation='linear', padding='same', use_bias=False)(inputs)
+      conv1 = Conv3D(int(2*features*baseChannels), (filterSize, filterSize, filterSize), activation='linear', padding='same', use_bias=False)(inputs)
       conv1 = BatchNormalization()(conv1)
-      conv1 = Activation("relu")(conv1)
-      conv1 = Conv3D(int(features*baseChannels), (1, 1, 1), activation='linear', padding='same', use_bias=False)(conv1)
+      if useLeakyReLU > 0:
+        conv1 = LeakyReLU(useLeakyReLU)(conv1)
+      else:
+        conv1 = Activation("relu")(conv1)
+      conv1 = Conv3D(int(features*baseChannels), (filterSize, filterSize, filterSize), activation='linear', padding='same', use_bias=False)(conv1)
       conv1 = BatchNormalization()(conv1)
-      conv1 = Activation("relu")(conv1)
+      if useLeakyReLU > 0:
+        conv1 = LeakyReLU(useLeakyReLU)(conv1)
+      else:
+        conv1 = Activation("relu")(conv1)
     else:
-      conv1 = Conv3D(int(2*features*baseChannels), (1, 1, 1), activation='relu', padding='same')(inputs)
-      conv1 = Conv3D(int(features*baseChannels), (1, 1, 1), activation='relu', padding='same')(conv1)
+      conv1 = Conv3D(int(2*features*baseChannels), (filterSize, filterSize, filterSize), padding='same')(inputs)
+      #conv1 = Conv3D(int(2*features*baseChannels), (filterSize, filterSize, filterSize), activation='relu', padding='same')(inputs)
+      if useLeakyReLU > 0:
+        conv1 = LeakyReLU(useLeakyReLU)(conv1)
+      else:
+        conv1 = Activation("relu")(conv1)
+      conv1 = Conv3D(int(features*baseChannels), (filterSize, filterSize, filterSize), padding='same')(conv1)
+      if useLeakyReLU > 0:
+        conv1 = LeakyReLU(useLeakyReLU)(conv1)
+      else:
+        conv1 = Activation("relu")(conv1)
       if useDropout > 0:
         conv1 = Dropout(useDropout)(conv1)
-    pool1 = conv1
-    #pool1 = MaxPooling3D(pool_size=(2, 2, 2))(conv1)
+    #pool1 = conv1
+    pool1 = MaxPooling3D(pool_size=(2, 2, 2))(conv1)
   else:
     inputs = Input((YDim, XDim, WStokes*ZStokes))
     if doBatchNorm:
-      conv1 = Conv2D(int(2*features*baseChannels), (1, 1), activation='linear', padding='same', use_bias=False)(inputs)
+      conv1 = Conv2D(int(2*features*baseChannels), (filterSize, filterSize), activation='linear', padding='same', use_bias=False)(inputs)
       conv1 = BatchNormalization()(conv1)
-      conv1 = Activation("relu")(conv1)
-      conv1 = Conv2D(int(features*baseChannels), (1, 1), activation='linear', padding='same', use_bias=False)(conv1)
+      if useLeakyReLU > 0:
+        conv1 = LeakyReLU(useLeakyReLU)(conv1)
+      else:
+        conv1 = Activation("relu")(conv1)
+      conv1 = Conv2D(int(features*baseChannels), (filterSize, filterSize), activation='linear', padding='same', use_bias=False)(conv1)
       conv1 = BatchNormalization()(conv1)
-      conv1 = Activation("relu")(conv1)
+      if useLeakyReLU > 0:
+        conv1 = LeakyReLU(useLeakyReLU)(conv1)
+      else:
+        conv1 = Activation("relu")(conv1)
     else:
-      conv1 = Conv2D(int(2*features*baseChannels), (1, 1), activation='relu', padding='same')(inputs)
-      conv1 = Conv2D(int(features*baseChannels), (1, 1), activation='relu', padding='same')(conv1)
+      conv1 = Conv2D(int(2*features*baseChannels), (filterSize, filterSize), padding='same')(inputs)
+      if useLeakyReLU > 0:
+        conv1 = LeakyReLU(useLeakyReLU)(conv1)
+      else:
+        conv1 = Activation("relu")(conv1)
+      conv1 = Conv2D(int(features*baseChannels), (filterSize, filterSize), padding='same')(conv1)
+      if useLeakyReLU > 0:
+        conv1 = LeakyReLU(useLeakyReLU)(conv1)
+      else:
+        conv1 = Activation("relu")(conv1)
       if useDropout > 0:
         conv1 = Dropout(useDropout)(conv1)
-    pool1 = conv1
-    #pool1 = MaxPooling2D(pool_size=(2, 2))(conv1)
+    #pool1 = conv1
+    pool1 = MaxPooling2D(pool_size=(2, 2))(conv1)
 
 
   features=features*2
@@ -130,13 +160,27 @@ def UNet():
     if doBatchNorm:
       conv2 = Conv3D(int(2*features*baseChannels), (filterSize, filterSize, filterSize), activation='linear', padding='same', use_bias=False)(pool1)
       conv2 = BatchNormalization()(conv2)
-      conv2 = Activation("relu")(conv2)
+      if useLeakyReLU > 0:
+        conv2 = LeakyReLU(useLeakyReLU)(conv2)
+      else:
+        conv2 = Activation("relu")(conv2)
       conv2 = Conv3D(int(features*baseChannels), (filterSize, filterSize, filterSize), activation='linear', padding='same', use_bias=False)(conv2)
       conv2 = BatchNormalization()(conv2)
-      conv2 = Activation("relu")(conv2)
+      if useLeakyReLU > 0:
+        conv2 = LeakyReLU(useLeakyReLU)(conv2)
+      else:
+        conv2 = Activation("relu")(conv2)
     else:
-      conv2 = Conv3D(int(2*features*baseChannels), (filterSize, filterSize, filterSize), activation='relu', padding='same')(pool1)
-      conv2 = Conv3D(int(features*baseChannels), (filterSize, filterSize, filterSize), activation='relu', padding='same')(conv2)
+      conv2 = Conv3D(int(2*features*baseChannels), (filterSize, filterSize, filterSize), padding='same')(pool1)
+      if useLeakyReLU > 0:
+        conv2 = LeakyReLU(useLeakyReLU)(conv2)
+      else:
+        conv2 = Activation("relu")(conv2)
+      conv2 = Conv3D(int(features*baseChannels), (filterSize, filterSize, filterSize), padding='same')(conv2)
+      if useLeakyReLU > 0:
+        conv2 = LeakyReLU(useLeakyReLU)(conv2)
+      else:
+        conv2 = Activation("relu")(conv2)
       if useDropout > 0:
         conv2 = Dropout(useDropout)(conv2)
     pool2 = MaxPooling3D(pool_size=(2, 2, 2))(conv2)
@@ -144,13 +188,27 @@ def UNet():
     if doBatchNorm:
       conv2 = Conv2D(int(2*features*baseChannels), (filterSize, filterSize), activation='linear', padding='same', use_bias=False)(pool1)
       conv2 = BatchNormalization()(conv2)
-      conv2 = Activation("relu")(conv2)
+      if useLeakyReLU > 0:
+        conv2 = LeakyReLU(useLeakyReLU)(conv2)
+      else:
+        conv2 = Activation("relu")(conv2)
       conv2 = Conv2D(int(features*baseChannels), (filterSize, filterSize), activation='linear', padding='same', use_bias=False)(conv2)
       conv2 = BatchNormalization()(conv2)
-      conv2 = Activation("relu")(conv2)
+      if useLeakyReLU > 0:
+        conv2 = LeakyReLU(useLeakyReLU)(conv2)
+      else:
+        conv2 = Activation("relu")(conv2)
     else:
-      conv2 = Conv2D(int(2*features*baseChannels), (filterSize, filterSize), activation='relu', padding='same')(pool1)
-      conv2 = Conv2D(int(features*baseChannels), (filterSize, filterSize), activation='relu', padding='same')(conv2)
+      conv2 = Conv2D(int(2*features*baseChannels), (filterSize, filterSize), padding='same')(pool1)
+      if useLeakyReLU > 0:
+        conv2 = LeakyReLU(useLeakyReLU)(conv2)
+      else:
+        conv2 = Activation("relu")(conv2)
+      conv2 = Conv2D(int(features*baseChannels), (filterSize, filterSize), padding='same')(conv2)
+      if useLeakyReLU > 0:
+        conv2 = LeakyReLU(useLeakyReLU)(conv2)
+      else:
+        conv2 = Activation("relu")(conv2)
       if useDropout > 0:
         conv2 = Dropout(useDropout)(conv2)
     pool2 = MaxPooling2D(pool_size=(2, 2))(conv2)
@@ -161,13 +219,27 @@ def UNet():
     if doBatchNorm:
       conv3 = Conv3D(int(2*features*baseChannels), (filterSize, filterSize, filterSize), activation='linear', padding='same', use_bias=False)(pool2)
       conv3 = BatchNormalization()(conv3)
-      conv3 = Activation("relu")(conv3)
+      if useLeakyReLU > 0:
+        conv3 = LeakyReLU(useLeakyReLU)(conv3)
+      else:
+        conv3 = Activation("relu")(conv3)
       conv3 = Conv3D(int(features*baseChannels), (filterSize, filterSize, filterSize), activation='linear', padding='same', use_bias=False)(conv3)
       conv3 = BatchNormalization()(conv3)
-      conv3 = Activation("relu")(conv3)
+      if useLeakyReLU > 0:
+        conv3 = LeakyReLU(useLeakyReLU)(conv3)
+      else:
+        conv3 = Activation("relu")(conv3)
     else:
-      conv3 = Conv3D(int(2*features*baseChannels), (filterSize, filterSize, filterSize), activation='relu', padding='same')(pool2)
-      conv3 = Conv3D(int(features*baseChannels), (filterSize, filterSize, filterSize), activation='relu', padding='same')(conv3)
+      conv3 = Conv3D(int(2*features*baseChannels), (filterSize, filterSize, filterSize), padding='same')(pool2)
+      if useLeakyReLU > 0:
+        conv3 = LeakyReLU(useLeakyReLU)(conv3)
+      else:
+        conv3 = Activation("relu")(conv3)
+      conv3 = Conv3D(int(features*baseChannels), (filterSize, filterSize, filterSize), padding='same')(conv3)
+      if useLeakyReLU > 0:
+        conv3 = LeakyReLU(useLeakyReLU)(conv3)
+      else:
+        conv3 = Activation("relu")(conv3)
       if useDropout > 0:
         conv3 = Dropout(useDropout)(conv3)
     pool3 = MaxPooling3D(pool_size=(2, 2, 2))(conv3)
@@ -175,29 +247,30 @@ def UNet():
     if doBatchNorm:
       conv3 = Conv2D(int(2*features*baseChannels), (filterSize, filterSize), activation='linear', padding='same', use_bias=False)(pool2)
       conv3 = BatchNormalization()(conv3)
-      conv3 = Activation("relu")(conv3)
+      if useLeakyReLU > 0:
+        conv3 = LeakyReLU(useLeakyReLU)(conv3)
+      else:
+        conv3 = Activation("relu")(conv3)
       conv3 = Conv2D(int(features*baseChannels), (filterSize, filterSize), activation='linear', padding='same', use_bias=False)(conv3)
       conv3 = BatchNormalization()(conv3)
-      conv3 = Activation("relu")(conv3)
+      if useLeakyReLU > 0:
+        conv3 = LeakyReLU(useLeakyReLU)(conv3)
+      else:
+        conv3 = Activation("relu")(conv3)
     else:
-      conv3 = Conv2D(int(2*features*baseChannels), (filterSize, filterSize), activation='relu', padding='same')(pool2)
-      conv3 = Conv2D(int(features*baseChannels), (filterSize, filterSize), activation='relu', padding='same')(conv3)
+      conv3 = Conv2D(int(2*features*baseChannels), (filterSize, filterSize), padding='same')(pool2)
+      if useLeakyReLU > 0:
+        conv3 = LeakyReLU(useLeakyReLU)(conv3)
+      else:
+        conv3 = Activation("relu")(conv3)
+      conv3 = Conv2D(int(features*baseChannels), (filterSize, filterSize), padding='same')(conv3)
+      if useLeakyReLU > 0:
+        conv3 = LeakyReLU(useLeakyReLU)(conv3)
+      else:
+        conv3 = Activation("relu")(conv3)
       if useDropout > 0:
         conv3 = Dropout(useDropout)(conv3)
     pool3 = MaxPooling2D(pool_size=(2, 2))(conv3)
-
-  #conv4 = Conv2D(256, (3, 3), activation='relu', padding='same')(pool3)
-  #conv4 = Conv2D(256, (3, 3), activation='relu', padding='same')(conv4)
-  #pool4 = MaxPooling2D(pool_size=(2, 2))(conv4)
-
-  #conv5 = Conv2D(64, (3, 3), activation='relu', padding='same')(pool4)
-  #conv5 = Conv2D(64, (3, 3), activation='relu', padding='same')(conv5)
-  #pool5 = MaxPooling2D(pool_size=(2, 2))(conv5)
-
-  #conv6 = Conv2D(128, (3, 3), activation='relu', padding='same')(pool5)
-  #conv6 = Conv2D(128, (3, 3), activation='relu', padding='same')(conv6)
-  #conv4 = Conv3D(128, (3, 3, 3), activation='relu', padding='same')(pool3)
-  #conv4 = Conv3D(128, (3, 3, 3), activation='relu', padding='same')(conv4)
 
   features=features*2
   # image size/receptive field: 8x8/81x81
@@ -205,13 +278,27 @@ def UNet():
     if doBatchNorm:
       conv4 = Conv3D(int(2*features*baseChannels), (filterSize, filterSize, filterSize), activation='linear', padding='same', use_bias=False)(pool3)
       conv4 = BatchNormalization()(conv4)
-      conv4 = Activation("relu")(conv4)
+      if useLeakyReLU > 0:
+        conv4 = LeakyReLU(useLeakyReLU)(conv4)
+      else:
+        conv4 = Activation("relu")(conv4)
       conv4 = Conv3D(int(features*baseChannels), (filterSize, filterSize, filterSize), activation='linear', padding='same', use_bias=False)(conv4)
       conv4 = BatchNormalization()(conv4)
-      conv4 = Activation("relu")(conv4)
+      if useLeakyReLU > 0:
+        conv4 = LeakyReLU(useLeakyReLU)(conv4)
+      else:
+        conv4 = Activation("relu")(conv4)
     else:
-      conv4 = Conv3D(int(2*features*baseChannels), (filterSize, filterSize, filterSize), activation='relu', padding='same')(pool3)
-      conv4 = Conv3D(int(features*baseChannels), (filterSize, filterSize, filterSize), activation='relu', padding='same')(conv4)
+      conv4 = Conv3D(int(2*features*baseChannels), (filterSize, filterSize, filterSize), padding='same')(pool3)
+      if useLeakyReLU > 0:
+        conv4 = LeakyReLU(useLeakyReLU)(conv4)
+      else:
+        conv4 = Activation("relu")(conv4)
+      conv4 = Conv3D(int(features*baseChannels), (filterSize, filterSize, filterSize), padding='same')(conv4)
+      if useLeakyReLU > 0:
+        conv4 = LeakyReLU(useLeakyReLU)(conv4)
+      else:
+        conv4 = Activation("relu")(conv4)
       if useDropout > 0:
         conv4 = Dropout(useDropout)(conv4)
     pool4 = MaxPooling3D(pool_size=(2, 2, 2))(conv4)
@@ -219,13 +306,27 @@ def UNet():
     if doBatchNorm:
       conv4 = Conv2D(int(2*features*baseChannels), (filterSize, filterSize), activation='linear', padding='same', use_bias=False)(pool3)
       conv4 = BatchNormalization()(conv4)
-      conv4 = Activation("relu")(conv4)
+      if useLeakyReLU > 0:
+        conv4 = LeakyReLU(useLeakyReLU)(conv4)
+      else:
+        conv4 = Activation("relu")(conv4)
       conv4 = Conv2D(int(features*baseChannels), (filterSize, filterSize), activation='linear', padding='same', use_bias=False)(conv4)
       conv4 = BatchNormalization()(conv4)
-      conv4 = Activation("relu")(conv4)
+      if useLeakyReLU > 0:
+        conv4 = LeakyReLU(useLeakyReLU)(conv4)
+      else:
+        conv4 = Activation("relu")(conv4)
     else:
-      conv4 = Conv2D(int(2*features*baseChannels), (filterSize, filterSize), activation='relu', padding='same')(pool3)
-      conv4 = Conv2D(int(features*baseChannels), (filterSize, filterSize), activation='relu', padding='same')(conv4)
+      conv4 = Conv2D(int(2*features*baseChannels), (filterSize, filterSize), padding='same')(pool3)
+      if useLeakyReLU > 0:
+        conv4 = LeakyReLU(useLeakyReLU)(conv4)
+      else:
+        conv4 = Activation("relu")(conv4)
+      conv4 = Conv2D(int(features*baseChannels), (filterSize, filterSize), padding='same')(conv4)
+      if useLeakyReLU > 0:
+        conv4 = LeakyReLU(useLeakyReLU)(conv4)
+      else:
+        conv4 = Activation("relu")(conv4)
       if useDropout > 0:
         conv4 = Dropout(useDropout)(conv4)
     pool4 = MaxPooling2D(pool_size=(2, 2))(conv4)
@@ -237,26 +338,54 @@ def UNet():
     if doBatchNorm:
       conv5 = Conv3D(int(2*features*baseChannels), (filterSize, filterSize, filterSize), activation='linear', padding='same', use_bias=False)(pool4)
       conv5 = BatchNormalization()(conv5)
-      conv5 = Activation("relu")(conv5)
+      if useLeakyReLU > 0:
+        conv5 = LeakyReLU(useLeakyReLU)(conv5)
+      else:
+        conv5 = Activation("relu")(conv5)
       conv5 = Conv3D(int(features*baseChannels), (filterSize, filterSize, filterSize), activation='linear', padding='same', use_bias=False)(conv5)
       conv5 = BatchNormalization()(conv5)
-      conv5 = Activation("relu")(conv5)
+      if useLeakyReLU > 0:
+        conv5 = LeakyReLU(useLeakyReLU)(conv5)
+      else:
+        conv5 = Activation("relu")(conv5)
     else:
-      conv5 = Conv3D(int(2*features*baseChannels), (filterSize, filterSize, filterSize), activation='relu', padding='same')(pool4)
-      conv5 = Conv3D(int(features*baseChannels), (filterSize, filterSize, filterSize), activation='relu', padding='same')(conv5)
+      conv5 = Conv3D(int(2*features*baseChannels), (filterSize, filterSize, filterSize), padding='same')(pool4)
+      if useLeakyReLU > 0:
+        conv5 = LeakyReLU(useLeakyReLU)(conv5)
+      else:
+        conv5 = Activation("relu")(conv5)
+      conv5 = Conv3D(int(features*baseChannels), (filterSize, filterSize, filterSize), padding='same')(conv5)
+      if useLeakyReLU > 0:
+        conv5 = LeakyReLU(useLeakyReLU)(conv5)
+      else:
+        conv5 = Activation("relu")(conv5)
       if useDropout > 0:
         conv5 = Dropout(useDropout)(conv5)
   else:
     if doBatchNorm:
       conv5 = Conv2D(int(2*features*baseChannels), (filterSize, filterSize), activation='linear', padding='same', use_bias=False)(pool4)
       conv5 = BatchNormalization()(conv5)
-      conv5 = Activation("relu")(conv5)
+      if useLeakyReLU > 0:
+        conv5 = LeakyReLU(useLeakyReLU)(conv5)
+      else:
+        conv5 = Activation("relu")(conv5)
       conv5 = Conv2D(int(features*baseChannels), (filterSize, filterSize), activation='linear', padding='same', use_bias=False)(conv5)
       conv5 = BatchNormalization()(conv5)
-      conv5 = Activation("relu")(conv5)
+      if useLeakyReLU > 0:
+        conv5 = LeakyReLU(useLeakyReLU)(conv5)
+      else:
+        conv5 = Activation("relu")(conv5)
     else:
-      conv5 = Conv2D(int(2*features*baseChannels), (filterSize, filterSize), activation='relu', padding='same')(pool4)
-      conv5 = Conv2D(int(features*baseChannels), (filterSize, filterSize), activation='relu', padding='same')(conv5)
+      conv5 = Conv2D(int(2*features*baseChannels), (filterSize, filterSize), padding='same')(pool4)
+      if useLeakyReLU > 0:
+        conv5 = LeakyReLU(useLeakyReLU)(conv5)
+      else:
+        conv5 = Activation("relu")(conv5)
+      conv5 = Conv2D(int(features*baseChannels), (filterSize, filterSize), padding='same')(conv5)
+      if useLeakyReLU > 0:
+        conv5 = LeakyReLU(useLeakyReLU)(conv5)
+      else:
+        conv5 = Activation("relu")(conv5)
       if useDropout > 0:
         conv5 = Dropout(useDropout)(conv5)
 
@@ -265,13 +394,27 @@ def UNet():
     if doBatchNorm:
       conv6 = Conv3D(int(features*baseChannels), (filterSize, filterSize, filterSize), activation='linear', padding='same', use_bias=False)(up6)
       conv6 = BatchNormalization()(conv6)
-      conv6 = Activation("relu")(conv6)
+      if useLeakyReLU > 0:
+        conv6 = LeakyReLU(useLeakyReLU)(conv6)
+      else:
+        conv6 = Activation("relu")(conv6)
       conv6 = Conv3D(int(features*baseChannels), (filterSize, filterSize, filterSize), activation='linear', padding='same', use_bias=False)(conv6)
       conv6 = BatchNormalization()(conv6)
-      conv6 = Activation("relu")(conv5)
+      if useLeakyReLU > 0:
+        conv6 = LeakyReLU(useLeakyReLU)(conv6)
+      else:
+        conv6 = Activation("relu")(conv6)
     else:
-      conv6 = Conv3D(int(features*baseChannels), (filterSize, filterSize, filterSize), activation='relu', padding='same')(up6)
-      conv6 = Conv3D(int(features*baseChannels), (filterSize, filterSize, filterSize), activation='relu', padding='same')(conv6)
+      conv6 = Conv3D(int(features*baseChannels), (filterSize, filterSize, filterSize), padding='same')(up6)
+      if useLeakyReLU > 0:
+        conv6 = LeakyReLU(useLeakyReLU)(conv6)
+      else:
+        conv6 = Activation("relu")(conv6)
+      conv6 = Conv3D(int(features*baseChannels), (filterSize, filterSize, filterSize), padding='same')(conv6)
+      if useLeakyReLU > 0:
+        conv6 = LeakyReLU(useLeakyReLU)(conv6)
+      else:
+        conv6 = Activation("relu")(conv6)
       if useDropout > 0:
         conv6 = Dropout(useDropout)(conv6)
   else:
@@ -279,13 +422,27 @@ def UNet():
     if doBatchNorm:
       conv6 = Conv2D(int(features*baseChannels), (filterSize, filterSize), activation='linear', padding='same', use_bias=False)(up6)
       conv6 = BatchNormalization()(conv6)
-      conv6 = Activation("relu")(conv6)
+      if useLeakyReLU > 0:
+        conv6 = LeakyReLU(useLeakyReLU)(conv6)
+      else:
+        conv6 = Activation("relu")(conv6)
       conv6 = Conv2D(int(features*baseChannels), (filterSize, filterSize), activation='linear', padding='same', use_bias=False)(conv6)
       conv6 = BatchNormalization()(conv6)
-      conv6 = Activation("relu")(conv6)
+      if useLeakyReLU > 0:
+        conv6 = LeakyReLU(useLeakyReLU)(conv6)
+      else:
+        conv6 = Activation("relu")(conv6)
     else:
-      conv6 = Conv2D(int(features*baseChannels), (filterSize, filterSize), activation='relu', padding='same')(up6)
-      conv6 = Conv2D(int(features*baseChannels), (filterSize, filterSize), activation='relu', padding='same')(conv6)
+      conv6 = Conv2D(int(features*baseChannels), (filterSize, filterSize), padding='same')(up6)
+      if useLeakyReLU > 0:
+        conv6 = LeakyReLU(useLeakyReLU)(conv6)
+      else:
+        conv6 = Activation("relu")(conv6)
+      conv6 = Conv2D(int(features*baseChannels), (filterSize, filterSize), padding='same')(conv6)
+      if useLeakyReLU > 0:
+        conv6 = LeakyReLU(useLeakyReLU)(conv6)
+      else:
+        conv6 = Activation("relu")(conv6)
       if useDropout > 0:
         conv6 = Dropout(useDropout)(conv6)
 
@@ -295,13 +452,27 @@ def UNet():
     if doBatchNorm:
       conv7 = Conv3D(int(features*baseChannels), (filterSize, filterSize, filterSize), activation='linear', padding='same', use_bias=False)(up7)
       conv7 = BatchNormalization()(conv7)
-      conv7 = Activation("relu")(conv7)
+      if useLeakyReLU > 0:
+        conv7 = LeakyReLU(useLeakyReLU)(conv7)
+      else:
+        conv7 = Activation("relu")(conv7)
       conv7 = Conv3D(int(features*baseChannels), (filterSize, filterSize, filterSize), activation='linear', padding='same', use_bias=False)(conv7)
       conv7 = BatchNormalization()(conv7)
-      conv7 = Activation("relu")(conv7)
+      if useLeakyReLU > 0:
+        conv7 = LeakyReLU(useLeakyReLU)(conv7)
+      else:
+        conv7 = Activation("relu")(conv7)
     else:
-      conv7 = Conv3D(int(features*baseChannels), (filterSize, filterSize, filterSize), activation='relu', padding='same')(up7)
-      conv7 = Conv3D(int(features*baseChannels), (filterSize, filterSize, filterSize), activation='relu', padding='same')(conv7)
+      conv7 = Conv3D(int(features*baseChannels), (filterSize, filterSize, filterSize), padding='same')(up7)
+      if useLeakyReLU > 0:
+        conv7 = LeakyReLU(useLeakyReLU)(conv7)
+      else:
+        conv7 = Activation("relu")(conv7)
+      conv7 = Conv3D(int(features*baseChannels), (filterSize, filterSize, filterSize), padding='same')(conv7)
+      if useLeakyReLU > 0:
+        conv7 = LeakyReLU(useLeakyReLU)(conv7)
+      else:
+        conv7 = Activation("relu")(conv7)
       if useDropout > 0:
         conv7 = Dropout(useDropout)(conv7)
   else:
@@ -309,13 +480,27 @@ def UNet():
     if doBatchNorm:
       conv7 = Conv2D(int(features*baseChannels), (filterSize, filterSize), activation='linear', padding='same', use_bias=False)(up7)
       conv7 = BatchNormalization()(conv7)
-      conv7 = Activation("relu")(conv7)
+      if useLeakyReLU > 0:
+        conv7 = LeakyReLU(useLeakyReLU)(conv7)
+      else:
+        conv7 = Activation("relu")(conv7)
       conv7 = Conv2D(int(features*baseChannels), (filterSize, filterSize), activation='linear', padding='same', use_bias=False)(conv7)
       conv7 = BatchNormalization()(conv7)
-      conv7 = Activation("relu")(conv7)
+      if useLeakyReLU > 0:
+        conv7 = LeakyReLU(useLeakyReLU)(conv7)
+      else:
+        conv7 = Activation("relu")(conv7)
     else:
-      conv7 = Conv2D(int(features*baseChannels), (filterSize, filterSize), activation='relu', padding='same')(up7)
-      conv7 = Conv2D(int(features*baseChannels), (filterSize, filterSize), activation='relu', padding='same')(conv7)
+      conv7 = Conv2D(int(features*baseChannels), (filterSize, filterSize), padding='same')(up7)
+      if useLeakyReLU > 0:
+        conv7 = LeakyReLU(useLeakyReLU)(conv7)
+      else:
+        conv7 = Activation("relu")(conv7)
+      conv7 = Conv2D(int(features*baseChannels), (filterSize, filterSize), padding='same')(conv7)
+      if useLeakyReLU > 0:
+        conv7 = LeakyReLU(useLeakyReLU)(conv7)
+      else:
+        conv7 = Activation("relu")(conv7)
       if useDropout > 0:
         conv7= Dropout(useDropout)(conv7)
 
@@ -325,57 +510,113 @@ def UNet():
     if doBatchNorm:
       conv8 = Conv3D(int(features*baseChannels), (filterSize, filterSize, filterSize), activation='linear', padding='same', use_bias=False)(up8)
       conv8 = BatchNormalization()(conv8)
-      conv8 = Activation("relu")(conv8)
+      if useLeakyReLU > 0:
+        conv8 = LeakyReLU(useLeakyReLU)(conv8)
+      else:
+        conv8 = Activation("relu")(conv8)
       conv8 = Conv3D(int(features*baseChannels), (filterSize, filterSize, filterSize), activation='linear', padding='same', use_bias=False)(conv8)
       conv8 = BatchNormalization()(conv8)
-      conv8 = Activation("relu")(conv8)
+      if useLeakyReLU > 0:
+        conv8 = LeakyReLU(useLeakyReLU)(conv8)
+      else:
+        conv8 = Activation("relu")(conv8)
     else:
-      conv8 = Conv3D(int(features*baseChannels), (filterSize, filterSize, filterSize), activation='relu', padding='same')(up8)
-      conv8 = Conv3D(int(features*baseChannels), (filterSize, filterSize, filterSize), activation='relu', padding='same')(conv8)
+      conv8 = Conv3D(int(features*baseChannels), (filterSize, filterSize, filterSize), padding='same')(up8)
+      if useLeakyReLU > 0:
+        conv8 = LeakyReLU(useLeakyReLU)(conv8)
+      else:
+        conv8 = Activation("relu")(conv8)
+      conv8 = Conv3D(int(features*baseChannels), (filterSize, filterSize, filterSize), padding='same')(conv8)
+      if useLeakyReLU > 0:
+        conv8 = LeakyReLU(useLeakyReLU)(conv8)
+      else:
+        conv8 = Activation("relu")(conv8)
       if useDropout > 0:
         conv8 = Dropout(useDropout)(conv8)
   else:
     up7 = concatenate([Conv2DTranspose(int(features*baseChannels), (2, 2), strides=(2, 2), padding='same')(conv7), conv2], axis=3)
     if doBatchNorm:
-      conv8 = Conv2D(int(features*baseChannels), (filterSize, filterSize), activation='linear', padding='same', use_bias=False)(up8)
+      conv8 = Conv2D(int(features*baseChannels), (filterSize, filterSize), activation='linear', padding='same', use_bias=False)(up7)
       conv8 = BatchNormalization()(conv8)
-      conv8 = Activation("relu")(conv8)
+      if useLeakyReLU > 0:
+        conv8 = LeakyReLU(useLeakyReLU)(conv8)
+      else:
+        conv8 = Activation("relu")(conv8)
       conv8 = Conv2D(int(features*baseChannels), (filterSize, filterSize), activation='linear', padding='same', use_bias=False)(conv8)
       conv8 = BatchNormalization()(conv8)
-      conv8 = Activation("relu")(conv8)
+      if useLeakyReLU > 0:
+        conv8 = LeakyReLU(useLeakyReLU)(conv8)
+      else:
+        conv8 = Activation("relu")(conv8)
     else:
-      conv8 = Conv2D(int(features*baseChannels), (filterSize, filterSize), activation='relu', padding='same')(up8)
-      conv8 = Conv2D(int(features*baseChannels), (filterSize, filterSize), activation='relu', padding='same')(conv8)
+      conv8 = Conv2D(int(features*baseChannels), (filterSize, filterSize), padding='same')(up7)
+      if useLeakyReLU > 0:
+        conv8 = LeakyReLU(useLeakyReLU)(conv8)
+      else:
+        conv8 = Activation("relu")(conv8)
+      conv8 = Conv2D(int(features*baseChannels), (filterSize, filterSize), padding='same')(conv8)
+      if useLeakyReLU > 0:
+        conv8 = LeakyReLU(useLeakyReLU)(conv8)
+      else:
+        conv8 = Activation("relu")(conv8)
       if useDropout > 0:
         conv8 = Dropout(useDropout)(conv8)
 
   features = features / 2
   if doWLConvolution:
-    up9 = concatenate([Conv3DTranspose(int(features*baseChannels), (1, 1, 1), strides=(1, 1, 1), padding='same')(conv8), conv1], axis=4)
+    up9 = concatenate([Conv3DTranspose(int(features*baseChannels), (filterSize, filterSize, filterSize), strides=(2, 2, 2), padding='same')(conv8), conv1], axis=4)
     if doBatchNorm:
-      conv9 = Conv3D(int(features*baseChannels), (1, 1, 1), activation='linear', padding='same', use_bias=False)(up9)
+      conv9 = Conv3D(int(features*baseChannels), (filterSize, filterSize, filterSize), activation='linear', padding='same', use_bias=False)(up9)
       conv9 = BatchNormalization()(conv9)
-      conv9 = Activation("relu")(conv9)
-      conv9 = Conv3D(int(features*baseChannels), (1, 1, 1), activation='linear', padding='same', use_bias=False)(conv9)
+      if useLeakyReLU > 0:
+        conv9 = LeakyReLU(useLeakyReLU)(conv9)
+      else:
+        conv9 = Activation("relu")(conv9)
+      conv9 = Conv3D(int(features*baseChannels), (filterSize, filterSize, filterSize), activation='linear', padding='same', use_bias=False)(conv9)
       conv9 = BatchNormalization()(conv9)
-      conv9 = Activation("relu")(conv9)
+      if useLeakyReLU > 0:
+        conv9 = LeakyReLU(useLeakyReLU)(conv9)
+      else:
+        conv9 = Activation("relu")(conv9)
     else:
-      conv9 = Conv3D(int(features*baseChannels), (1, 1, 1), activation='relu', padding='same')(up9)
-      conv9 = Conv3D(int(features*baseChannels), (1, 1, 1), activation='relu', padding='same')(conv9)
+      conv9 = Conv3D(int(features*baseChannels), (filterSize, filterSize, filterSize), padding='same')(up9)
+      if useLeakyReLU > 0:
+        conv9 = LeakyReLU(useLeakyReLU)(conv9)
+      else:
+        conv9 = Activation("relu")(conv9)
+      conv9 = Conv3D(int(features*baseChannels), (filterSize, filterSize, filterSize), padding='same')(conv9)
+      if useLeakyReLU > 0:
+        conv9 = LeakyReLU(useLeakyReLU)(conv9)
+      else:
+        conv9 = Activation("relu")(conv9)
       if useDropout > 0:
         conv9 = Dropout(useDropout)(conv9)
   else:
-    up7 = concatenate([Conv2DTranspose(int(features*baseChannels), (1, 1), strides=(1, 1), padding='same')(conv8), conv1], axis=3)
+    up9 = concatenate([Conv2DTranspose(int(features*baseChannels), (filterSize, filterSize), strides=(2, 2), padding='same')(conv8), conv1], axis=3)
     if doBatchNorm:
-      conv9 = Conv2D(int(features*baseChannels), (1, 1), activation='linear', padding='same', use_bias=False)(up9)
+      conv9 = Conv2D(int(features*baseChannels), (filterSize, filterSize), activation='linear', padding='same', use_bias=False)(up9)
       conv9 = BatchNormalization()(conv9)
-      conv9 = Activation("relu")(conv9)
-      conv9 = Conv2D(int(features*baseChannels), (1, 1), activation='linear', padding='same', use_bias=False)(conv9)
+      if useLeakyReLU > 0:
+        conv9 = LeakyReLU(useLeakyReLU)(conv9)
+      else:
+        conv9 = Activation("relu")(conv9)
+      conv9 = Conv2D(int(features*baseChannels), (filterSize, filterSize), activation='linear', padding='same', use_bias=False)(conv9)
       conv9 = BatchNormalization()(conv9)
-      conv9 = Activation("relu")(conv9)
+      if useLeakyReLU > 0:
+        conv9 = LeakyReLU(useLeakyReLU)(conv9)
+      else:
+        conv9 = Activation("relu")(conv9)
     else:
-      conv9 = Conv2D(int(features*baseChannels), (1, 1), activation='relu', padding='same')(up9)
-      conv9 = Conv2D(int(features*baseChannels), (1, 1), activation='relu', padding='same')(conv9)
+      conv9 = Conv2D(int(features*baseChannels), (filterSize, filterSize), padding='same')(up9)
+      if useLeakyReLU > 0:
+        conv9 = LeakyReLU(useLeakyReLU)(conv9)
+      else:
+        conv9 = Activation("relu")(conv9)
+      conv9 = Conv2D(int(features*baseChannels), (filterSize, filterSize), padding='same')(conv9)
+      if useLeakyReLU > 0:
+        conv9 = LeakyReLU(useLeakyReLU)(conv9)
+      else:
+        conv9 = Activation("relu")(conv9)
       if useDropout > 0:
         conv9 = Dropout(useDropout)(conv9)
 
