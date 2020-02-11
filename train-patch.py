@@ -10,16 +10,16 @@ from tensorflow.keras.callbacks import ModelCheckpoint
 from tensorflow.keras.models import model_from_yaml
 from tensorflow.keras import backend as K
 
-Version='2d-v8-1'
+Version='3d-aq-v1-3'
 doNormalize=True
 doWLConvolution=True
 doBatchNorm=False
 useCheckpoint=""
-useDropout=0.0
-useLeakyReLU=0.3
+useDropout=0.10
+useLeakyReLU=0
 baseChannels=16
 filterSize=3
-useLearningRate=1e-5
+useLearningRate=3e-4
 #useLearningRate=1e-6
 useBatchSize=16
 nEpochs=150
@@ -39,10 +39,12 @@ XMagfld=64
 YMagfld=64
 ZMagfld=3
 
-nExamples=19269
-#nExamples=19240
-nValid=2460
+#177244 patches: 21.8% train, 2.7%validate, 2.8%test
+nExamples=38639
+#nExamples=19269
+nValid=4785
 #nValid=2440
+nTest=4963
 #nTest=2545
 
 pathTrain = './tfr/trn-patch.tfr'  # The TFRecord file containing the training set
@@ -51,9 +53,6 @@ pathTest = './tfr/tst-patch.tfr'    # The TFRecord file containing the test set
 pathWeight = './model/patch-%s.h5'%(Version)  # The HDF5 weight file generated for the trained model
 pathModel = './model/patch-%s.nn'%(Version)  # The model saved as a JSON file
 pathLog = './log/patch-%s'%(Version)  # The training log
-
-#normMean = [12317.92913, 0.332441335, -0.297060628, -0.451666942]
-#normStdev = [1397.468631, 65.06104869, 65.06167056, 179.3232721]
 
 normMean = [11856.75185, 0.339544616, 0.031913142, -1.145931805]
 normStdev = [3602.323144, 42.30705892, 40.60409966, 43.49488492]
@@ -101,14 +100,13 @@ def UNet():
       else:
         conv1 = Activation("relu")(conv1)
       conv1 = Conv3D(int(features*baseChannels), (filterSize, filterSize, filterSize), activation='linear', padding='same', use_bias=False)(conv1)
-      conv1 = BatchNormalization()(conv1)
+      #conv1 = BatchNormalization()(conv1)
       if useLeakyReLU > 0:
         conv1 = LeakyReLU(useLeakyReLU)(conv1)
       else:
         conv1 = Activation("relu")(conv1)
     else:
       conv1 = Conv3D(int(2*features*baseChannels), (filterSize, filterSize, filterSize), padding='same')(inputs)
-      #conv1 = Conv3D(int(2*features*baseChannels), (filterSize, filterSize, filterSize), activation='relu', padding='same')(inputs)
       if useLeakyReLU > 0:
         conv1 = LeakyReLU(useLeakyReLU)(conv1)
       else:
@@ -120,7 +118,6 @@ def UNet():
         conv1 = Activation("relu")(conv1)
       if useDropout > 0:
         conv1 = Dropout(useDropout)(conv1)
-    #pool1 = conv1
     pool1 = MaxPooling3D(pool_size=(2, 2, 2))(conv1)
   else:
     inputs = Input((YDim, XDim, WStokes*ZStokes))
@@ -132,7 +129,7 @@ def UNet():
       else:
         conv1 = Activation("relu")(conv1)
       conv1 = Conv2D(int(features*baseChannels), (filterSize, filterSize), activation='linear', padding='same', use_bias=False)(conv1)
-      conv1 = BatchNormalization()(conv1)
+      #conv1 = BatchNormalization()(conv1)
       if useLeakyReLU > 0:
         conv1 = LeakyReLU(useLeakyReLU)(conv1)
       else:
@@ -150,7 +147,6 @@ def UNet():
         conv1 = Activation("relu")(conv1)
       if useDropout > 0:
         conv1 = Dropout(useDropout)(conv1)
-    #pool1 = conv1
     pool1 = MaxPooling2D(pool_size=(2, 2))(conv1)
 
 
@@ -165,7 +161,7 @@ def UNet():
       else:
         conv2 = Activation("relu")(conv2)
       conv2 = Conv3D(int(features*baseChannels), (filterSize, filterSize, filterSize), activation='linear', padding='same', use_bias=False)(conv2)
-      conv2 = BatchNormalization()(conv2)
+      #conv2 = BatchNormalization()(conv2)
       if useLeakyReLU > 0:
         conv2 = LeakyReLU(useLeakyReLU)(conv2)
       else:
@@ -193,7 +189,7 @@ def UNet():
       else:
         conv2 = Activation("relu")(conv2)
       conv2 = Conv2D(int(features*baseChannels), (filterSize, filterSize), activation='linear', padding='same', use_bias=False)(conv2)
-      conv2 = BatchNormalization()(conv2)
+      #conv2 = BatchNormalization()(conv2)
       if useLeakyReLU > 0:
         conv2 = LeakyReLU(useLeakyReLU)(conv2)
       else:
@@ -224,7 +220,7 @@ def UNet():
       else:
         conv3 = Activation("relu")(conv3)
       conv3 = Conv3D(int(features*baseChannels), (filterSize, filterSize, filterSize), activation='linear', padding='same', use_bias=False)(conv3)
-      conv3 = BatchNormalization()(conv3)
+      #conv3 = BatchNormalization()(conv3)
       if useLeakyReLU > 0:
         conv3 = LeakyReLU(useLeakyReLU)(conv3)
       else:
@@ -252,7 +248,7 @@ def UNet():
       else:
         conv3 = Activation("relu")(conv3)
       conv3 = Conv2D(int(features*baseChannels), (filterSize, filterSize), activation='linear', padding='same', use_bias=False)(conv3)
-      conv3 = BatchNormalization()(conv3)
+      #conv3 = BatchNormalization()(conv3)
       if useLeakyReLU > 0:
         conv3 = LeakyReLU(useLeakyReLU)(conv3)
       else:
@@ -283,7 +279,7 @@ def UNet():
       else:
         conv4 = Activation("relu")(conv4)
       conv4 = Conv3D(int(features*baseChannels), (filterSize, filterSize, filterSize), activation='linear', padding='same', use_bias=False)(conv4)
-      conv4 = BatchNormalization()(conv4)
+      #conv4 = BatchNormalization()(conv4)
       if useLeakyReLU > 0:
         conv4 = LeakyReLU(useLeakyReLU)(conv4)
       else:
@@ -311,7 +307,7 @@ def UNet():
       else:
         conv4 = Activation("relu")(conv4)
       conv4 = Conv2D(int(features*baseChannels), (filterSize, filterSize), activation='linear', padding='same', use_bias=False)(conv4)
-      conv4 = BatchNormalization()(conv4)
+      #conv4 = BatchNormalization()(conv4)
       if useLeakyReLU > 0:
         conv4 = LeakyReLU(useLeakyReLU)(conv4)
       else:
@@ -343,7 +339,7 @@ def UNet():
       else:
         conv5 = Activation("relu")(conv5)
       conv5 = Conv3D(int(features*baseChannels), (filterSize, filterSize, filterSize), activation='linear', padding='same', use_bias=False)(conv5)
-      conv5 = BatchNormalization()(conv5)
+      #conv5 = BatchNormalization()(conv5)
       if useLeakyReLU > 0:
         conv5 = LeakyReLU(useLeakyReLU)(conv5)
       else:
@@ -370,7 +366,7 @@ def UNet():
       else:
         conv5 = Activation("relu")(conv5)
       conv5 = Conv2D(int(features*baseChannels), (filterSize, filterSize), activation='linear', padding='same', use_bias=False)(conv5)
-      conv5 = BatchNormalization()(conv5)
+      #conv5 = BatchNormalization()(conv5)
       if useLeakyReLU > 0:
         conv5 = LeakyReLU(useLeakyReLU)(conv5)
       else:
@@ -399,7 +395,7 @@ def UNet():
       else:
         conv6 = Activation("relu")(conv6)
       conv6 = Conv3D(int(features*baseChannels), (filterSize, filterSize, filterSize), activation='linear', padding='same', use_bias=False)(conv6)
-      conv6 = BatchNormalization()(conv6)
+      #conv6 = BatchNormalization()(conv6)
       if useLeakyReLU > 0:
         conv6 = LeakyReLU(useLeakyReLU)(conv6)
       else:
@@ -427,7 +423,7 @@ def UNet():
       else:
         conv6 = Activation("relu")(conv6)
       conv6 = Conv2D(int(features*baseChannels), (filterSize, filterSize), activation='linear', padding='same', use_bias=False)(conv6)
-      conv6 = BatchNormalization()(conv6)
+      #conv6 = BatchNormalization()(conv6)
       if useLeakyReLU > 0:
         conv6 = LeakyReLU(useLeakyReLU)(conv6)
       else:
@@ -457,7 +453,7 @@ def UNet():
       else:
         conv7 = Activation("relu")(conv7)
       conv7 = Conv3D(int(features*baseChannels), (filterSize, filterSize, filterSize), activation='linear', padding='same', use_bias=False)(conv7)
-      conv7 = BatchNormalization()(conv7)
+      #conv7 = BatchNormalization()(conv7)
       if useLeakyReLU > 0:
         conv7 = LeakyReLU(useLeakyReLU)(conv7)
       else:
@@ -485,7 +481,7 @@ def UNet():
       else:
         conv7 = Activation("relu")(conv7)
       conv7 = Conv2D(int(features*baseChannels), (filterSize, filterSize), activation='linear', padding='same', use_bias=False)(conv7)
-      conv7 = BatchNormalization()(conv7)
+      #conv7 = BatchNormalization()(conv7)
       if useLeakyReLU > 0:
         conv7 = LeakyReLU(useLeakyReLU)(conv7)
       else:
@@ -515,7 +511,7 @@ def UNet():
       else:
         conv8 = Activation("relu")(conv8)
       conv8 = Conv3D(int(features*baseChannels), (filterSize, filterSize, filterSize), activation='linear', padding='same', use_bias=False)(conv8)
-      conv8 = BatchNormalization()(conv8)
+      #conv8 = BatchNormalization()(conv8)
       if useLeakyReLU > 0:
         conv8 = LeakyReLU(useLeakyReLU)(conv8)
       else:
@@ -543,7 +539,7 @@ def UNet():
       else:
         conv8 = Activation("relu")(conv8)
       conv8 = Conv2D(int(features*baseChannels), (filterSize, filterSize), activation='linear', padding='same', use_bias=False)(conv8)
-      conv8 = BatchNormalization()(conv8)
+      #conv8 = BatchNormalization()(conv8)
       if useLeakyReLU > 0:
         conv8 = LeakyReLU(useLeakyReLU)(conv8)
       else:
@@ -573,7 +569,7 @@ def UNet():
       else:
         conv9 = Activation("relu")(conv9)
       conv9 = Conv3D(int(features*baseChannels), (filterSize, filterSize, filterSize), activation='linear', padding='same', use_bias=False)(conv9)
-      conv9 = BatchNormalization()(conv9)
+      #conv9 = BatchNormalization()(conv9)
       if useLeakyReLU > 0:
         conv9 = LeakyReLU(useLeakyReLU)(conv9)
       else:
@@ -601,7 +597,7 @@ def UNet():
       else:
         conv9 = Activation("relu")(conv9)
       conv9 = Conv2D(int(features*baseChannels), (filterSize, filterSize), activation='linear', padding='same', use_bias=False)(conv9)
-      conv9 = BatchNormalization()(conv9)
+      #conv9 = BatchNormalization()(conv9)
       if useLeakyReLU > 0:
         conv9 = LeakyReLU(useLeakyReLU)(conv9)
       else:
@@ -630,7 +626,7 @@ def UNet():
 
   model = Model(inputs=[inputs], outputs=[conv10])
 
-  model.compile(optimizer=Adam(lr=useLearningRate), loss='mae', metrics=['mae', 'mse'])
+  model.compile(optimizer=Adam(lr=useLearningRate), loss='mse', metrics=['mae', 'mse'])
 
   print(model.summary())
 
@@ -639,11 +635,15 @@ def UNet():
 def train():
   K.set_image_data_format('channels_last')  # TF dimension ordering in this code
   featdef = {
-    #'magfld': tf.FixedLenSequenceFeature(shape=[YMagfld*XMagfld*ZMagfld], dtype=tf.string, allow_missing=True),
-    #'stokes': tf.FixedLenSequenceFeature(shape=[YStokes*XStokes*ZStokes], dtype=tf.string, allow_missing=True)
     'magfld': tf.FixedLenSequenceFeature(shape=[], dtype=tf.float32, allow_missing=True),
     'stokes': tf.FixedLenSequenceFeature(shape=[], dtype=tf.float32, allow_missing=True),
-#    'name':   tf.FixedLenFeature(shape=[], dtype=tf.string)
+    'xcen': tf.FixedLenFeature(shape=[], dtype=tf.float32),
+    'ycen': tf.FixedLenFeature(shape=[], dtype=tf.float32),
+    'xoff': tf.FixedLenFeature(shape=[], dtype=tf.float32),
+    'yoff': tf.FixedLenFeature(shape=[], dtype=tf.float32),
+    #'name': tf.FixedLenFeature(shape=[], dtype=tf.string),
+    #'dateobs': tf.FixedLenFeature(shape=[], dtype=tf.string),
+    'active': tf.FixedLenFeature(shape=[], dtype=tf.string),
     }
        
   def _parse_record(example_proto, clip=False):
@@ -675,9 +675,9 @@ def train():
     y = tf.reshape(y, (YMagfld, XMagfld, ZMagfld))
     y = tf.slice(y, (0, 0, 0), (YDim, XDim, ZMagfld))
 
-#    name = example['name']
+    active = example['active']
 
-#    return x, y, name
+    #return x, y, active == tf.constant('1')
     return x, y
 
   #construct a TFRecordDataset
