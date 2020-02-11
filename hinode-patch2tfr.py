@@ -386,7 +386,8 @@ train_writer.close()
 val_writer.close()
 test_writer.close()
 if i > 0:
-  print('%d examples: %d train, %d validate, %d test.'%(nExamples, nTrain, nVal, nTest))
-  print('%d patches: %03.1f%% train, %03.1f%%validate, %03.1f%%test.'%(i, 100.0*nTrain/i, 100.0*nVal/i, 100.0*nTest/i))
+  print('%d examples: %d'%(nExamples))
+  print('%d patches: %d train, %d validate, %d test'%(i, nTrain, nVal, nTest))
+  print('100% = %03.1f%% train + %03.1f%%validate + %03.1f%%test'%(100.0*nTrain/i, 100.0*nVal/i, 100.0*nTest/i))
 sys.stdout.flush()
 
