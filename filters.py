@@ -66,6 +66,7 @@ WInv=112
 
 plotWL=24
 plotPatch=2*PX+3
+plotFilters = "conv3d_3"
 
 spNum=3
 SPName = ['I', 'Q', 'U', 'V' ]
@@ -269,17 +270,18 @@ def expand_coordinates(indices):
   z[:, :, 1::2] += 1
   return x, y, z
 
-def plot_cube(ax, cube, angle=66):
+def plot_cube(ax, cube, angle=50):
   cube = plot_normalize(cube)
 
   facecolors = cm.inferno(cube)
   facecolors[:,:,:,-1] = cube  # alpha channel = voxel value
   facecolors = explode(facecolors)
 
-  filled = abs(facecolors[:,:,:,-1]) >= 0.6
+  filled = abs(facecolors[:,:,:,-1]) >= 0.5
+  #filled = facecolors[:,:,:,-1] != 0
   z, y, x = expand_coordinates(np.indices(np.array(filled.shape) + 1))
 
-  ax.view_init(60, angle)
+  ax.view_init(50, angle)
   ax.set_xlim(right=IMG_DIM*2)
   ax.set_ylim(top=IMG_DIM*2)
   ax.set_zlim(top=IMG_DIM*2)
@@ -296,14 +298,13 @@ def plot_cube(ax, cube, angle=66):
   ax.set_zlabel('$\lambda$', rotation = 0) #, fontsize=30)
 
   im = ax.voxels(x, y, z, filled, facecolors=facecolors)
-  #plot.show()
 
 def plot_filters(filters, title):
   # normalize filter values to 0-1 so we can visualize them
   f_min, f_max = filters.min(), filters.max()
-  #filters = (filters - f_min) / (f_max - f_min)
+  filters = (filters - f_min) / (f_max - f_min)
   # plot first few filters
-  n_filters = 8
+  n_filters = 1
   # bounds check on filters based on filters.shape
   for i in range(n_filters):
     # get the filter
@@ -313,7 +314,7 @@ def plot_filters(filters, title):
     ax = fig.gca(projection='3d')
 
     # bounds check on filters based on filters.shape
-    for j in range(8):
+    for j in range(4):
       # specify subplot and turn of axis
       #ax = plt.subplot(n_filters, 3, ix)
       #ax.set_xticks([])
@@ -328,7 +329,7 @@ def plot_filters(filters, title):
       #ax = fig.gca(projection='3d')
       if j == 0:
         ax.remove()
-      ax = fig.add_subplot(3, 3, j+1, projection='3d')
+      ax = fig.add_subplot(2, 2, j+1, projection='3d')
       plot_cube(ax, f[:, :, :, j])
 
     # show the filters for this input
@@ -342,7 +343,6 @@ def plot_filters(filters, title):
 
     plt.show()
 
-plotFilters = "conv3d_7"
 # summarize filter shapes
 for layer in model.layers:
   # check for convolutional layer
@@ -432,6 +432,7 @@ def invert_patch(SP,MF):
         fig1 = plt.figure(1)
         fig1.suptitle('%s Hinode SOT SP'%(name), fontsize=14)
         plt.subplot(221)
+        norm_sp = mpc.Normalize(vmin=-50.,vmax=50.)
         plt.title("Patch %d SOT SP-I"%(yi * PX + xi))
         plt.imshow(SP[plotWL,y:y+PYDim,x:x+PXDim,0], cmap=colormap)
         plt.subplot(222)
@@ -443,29 +444,58 @@ def invert_patch(SP,MF):
         plt.subplot(224)
         plt.title("Patch %d SOT SP-V"%(yi * PX + xi))
         plt.imshow(SP[plotWL,y:y+PYDim,x:x+PXDim,3], cmap=colormap)
-        plt.subplots_adjust(hspace=0.15, wspace=0.15)
+        m = cm.ScalarMappable(cmap=plt.cm.inferno, norm=norm_sp)
+        m.set_array([])
+        fig1.subplots_adjust(right=0.8)
+        cbar_ax = fig1.add_axes([0.83, 0.12, 0.02, 0.75])
+        cb = fig1.colorbar(m, cax=cbar_ax)
+        cb.set_label(MagUnit[0])
+        plt.subplots_adjust(hspace=0.25, wspace=0.20)
 
         fig2 = plt.figure(2)
         fig2.suptitle('%s Magnetograms MERLIN vs SPIN'%(name), fontsize=14)
         plt.subplot(231)
+        norm_s = mpc.Normalize(vmin=0.,vmax=5000.)
         plt.title("Patch %d MERLIN MF-St"%(yi * PX + xi))
-        plt.imshow(MF[0,y:y+PYDim,x:x+PXDim,0], cmap=colormap)
+        plt.imshow(MF[0,y:y+PYDim,x:x+PXDim,0], cmap=colormap, norm=norm_s)
         plt.subplot(234)
         plt.title("Patch %d SPIN MF-St"%(yi * PX + xi))
-        plt.imshow(inversion[n,:,:,0], cmap=colormap)
+        plt.imshow(inversion[n,:,:,0], cmap=colormap, norm=norm_s)
+        m = cm.ScalarMappable(cmap=plt.cm.inferno, norm=norm_s)
+        m.set_array([])
+        fig2.subplots_adjust(right=0.85)
+        cbar_ax = fig2.add_axes([0.32, 0.12, 0.01, 0.75])
+        cb = fig2.colorbar(m, cax=cbar_ax)
+        cb.set_label(MagUnit[0])
+
         plt.subplot(232)
+        norm_i = mpc.Normalize(vmin=0.,vmax=180.)
         plt.title("Patch %d MERLIN MF-Inc"%(yi * PX + xi))
-        plt.imshow(MF[0,y:y+PYDim,x:x+PXDim,1], cmap=colormap)
+        plt.imshow(MF[0,y:y+PYDim,x:x+PXDim,1], cmap=colormap, norm=norm_i)
         plt.subplot(235)
         plt.title("Patch %d SPIN MF-Inc"%(yi * PX + xi))
-        plt.imshow(inversion[n,:,:,1], cmap=colormap)
+        plt.imshow(inversion[n,:,:,1], cmap=colormap, norm=norm_i)
+        m = cm.ScalarMappable(cmap=plt.cm.inferno, norm=norm_i)
+        m.set_array([])
+        #fig2.subplots_adjust(right=0.85)
+        cbar_ax = fig2.add_axes([0.59, 0.12, 0.01, 0.75])
+        cb = fig2.colorbar(m, cax=cbar_ax)
+        cb.set_label(MagUnit[1])
+
         plt.subplot(233)
+        norm_a = mpc.Normalize(vmin=0.,vmax=180.)
         plt.title("Patch %d MERLIN MF-Az"%(yi * PX + xi))
-        plt.imshow(MF[0,y:y+PYDim,x:x+PXDim,2], cmap=colormap)
+        plt.imshow(MF[0,y:y+PYDim,x:x+PXDim,2], cmap=colormap, norm=norm_a)
         plt.subplot(236)
         plt.title("Patch %d SPIN MF-Az"%(yi * PX + xi))
-        plt.imshow(inversion[n,:,:,2], cmap=colormap)
-        plt.subplots_adjust(hspace=0.15, wspace=0.15)
+        plt.imshow(inversion[n,:,:,2], cmap=colormap, norm=norm_a)
+        m = cm.ScalarMappable(cmap=plt.cm.inferno, norm=norm_a)
+        m.set_array([])
+        #fig2.subplots_adjust(right=0.85)
+        cbar_ax = fig2.add_axes([0.86, 0.12, 0.01, 0.75])
+        cb = fig2.colorbar(m, cax=cbar_ax)
+        cb.set_label(MagUnit[2])
+        plt.subplots_adjust(hspace=0.20, wspace=0.40)
         plt.show()
         plt.close(fig1)
         plt.close(fig2)
@@ -572,23 +602,20 @@ for image, name, level, line, meta in process_sp3d(pathData):
       if showTicks == False:
         plt.axis('off')
       im = plt.imshow(imLevel1I,cmap=colormap)
-      #if showColorbar:
-      #  plt.colorbar(im, fraction=0.01, pad=0.15)
       plt.subplot(122)
       plt.ylim(ylim)
       plt.xlim(xlim)
       if showTitle:
         plt.title('%.2fA Stokes %s'%(line, SPName[3]))
       if showTicks:
-        plt.subplots_adjust(hspace=0.15, wspace=0.30)
+        plt.subplots_adjust(hspace=0.10, wspace=0.10)
       else:
         plt.subplots_adjust(hspace=0.05, wspace=0.05)
         plt.axis('off')
       plt.imshow(imLevel1V,cmap=colormap)
-      if showColorbar:
-        plt.colorbar(fraction=0.15, pad=0.25)
       fig2 = plt.figure(2)
       fig2.suptitle('%s Mag Field'%(name), fontsize=14)
+      norm_s = mpc.Normalize(vmin=0.,vmax=4000.)
       plt.subplot(121)
       plt.ylim(ylim)
       plt.xlim(xlim)
@@ -596,26 +623,26 @@ for image, name, level, line, meta in process_sp3d(pathData):
         plt.title('MERLIN Magnetic Field %s (%s)'%(MagName[0],MagUnit[0]))
       if showTicks == False:
         plt.axis('off')
-      norm_s = mpc.Normalize(vmin=0.,vmax=4000.)
-      #cpick = cm.ScalarMappable(norm=cnorm,cmap=cm1)
-      #cpick.set_array([])
-      #colormap = blue_red_colormap(0.,4000.)
       plt.imshow(imLevel2S,cmap=colormap,norm=norm_s)
-      if showColorbar:
-        plt.colorbar(fraction=0.046, pad=0.04)
       plt.subplot(122)
       plt.ylim(ylim)
       plt.xlim(xlim)
       if showTitle:
         plt.title('SPIN Magnetic Field %s (%s)'%(MagName[0],MagUnit[0]))
       if showTicks:
-        plt.subplots_adjust(hspace=0.15, wspace=0.30)
+        plt.subplots_adjust(hspace=0.30, wspace=0.30)
       else:
         plt.subplots_adjust(hspace=0.05, wspace=0.05)
         plt.axis('off')
       plt.imshow(imPredictS,cmap=colormap,norm=norm_s)
       if showColorbar:
-        plt.colorbar(fraction=0.046, pad=0.04)
+        #plt.colorbar(fraction=0.046, pad=0.04)
+        m = cm.ScalarMappable(cmap=plt.cm.inferno, norm=norm_s)
+        m.set_array([])
+        fig2.subplots_adjust(right=0.8)
+        cbar_ax = fig2.add_axes([0.85, 0.25, 0.02, 0.50])
+        cb = fig2.colorbar(m, cax=cbar_ax)
+        cb.set_label(MagUnit[0])
       fig3 = plt.figure(3)
       fig3.suptitle('%s Magnetic Field'%(name), fontsize=14)
       norm_i = mpc.Normalize(vmin=0.,vmax=180.)
@@ -627,21 +654,24 @@ for image, name, level, line, meta in process_sp3d(pathData):
       if showTicks == False:
         plt.axis('off')
       plt.imshow(imLevel2I,cmap=colormap,norm=norm_i)
-      if showColorbar:
-        plt.colorbar(fraction=0.046, pad=0.04)
       plt.subplot(122)
       plt.ylim(ylim)
       plt.xlim(xlim)
       if showTitle:
         plt.title('SPIN Magnetic Field %s (%s)'%(MagName[1],MagUnit[1]))
       if showTicks:
-        plt.subplots_adjust(hspace=0.15, wspace=0.30)
+        plt.subplots_adjust(hspace=0.30, wspace=0.30)
       else:
         plt.subplots_adjust(hspace=0.05, wspace=0.05)
         plt.axis('off')
       plt.imshow(imPredictI,cmap=colormap,norm=norm_i)
       if showColorbar:
-        plt.colorbar(fraction=0.046, pad=0.04)
+        m = cm.ScalarMappable(cmap=plt.cm.inferno, norm=norm_i)
+        m.set_array([])
+        fig3.subplots_adjust(right=0.8)
+        cbar_ax = fig3.add_axes([0.85, 0.25, 0.02, 0.50])
+        cb = fig3.colorbar(m, cax=cbar_ax)
+        cb.set_label(MagUnit[1])
       plt.subplots_adjust(hspace=0.05, wspace=0.05)
       fig4 = plt.figure(4)
       fig4.suptitle('%s Magnetic Field'%(name), fontsize=14)
@@ -654,22 +684,24 @@ for image, name, level, line, meta in process_sp3d(pathData):
       if showTicks == False:
         plt.axis('off')
       plt.imshow(imLevel2A,cmap=colormap,norm=norm_a)
-      if showColorbar:
-        plt.colorbar(fraction=0.046, pad=0.04)
       plt.subplot(122)
       plt.ylim(ylim)
       plt.xlim(xlim)
       if showTitle:
         plt.title('SPIN Magnetic Field %s (%s)'%(MagName[2],MagUnit[2]))
       if showTicks:
-        plt.subplots_adjust(hspace=0.15, wspace=0.30)
+        plt.subplots_adjust(hspace=0.30, wspace=0.30)
       else:
         plt.subplots_adjust(hspace=0.05, wspace=0.05)
         plt.axis('off')
       plt.imshow(imPredictA,cmap=colormap,norm=norm_a)
       if showColorbar:
-        #plt.colorbar(fraction=0.046, pad=0.04)
-        plt.colorbar(fraction=0.15, pad=0.25)
+        m = cm.ScalarMappable(cmap=plt.cm.inferno, norm=norm_a)
+        m.set_array([])
+        fig4.subplots_adjust(right=0.8)
+        cbar_ax = fig4.add_axes([0.85, 0.25, 0.02, 0.50])
+        cb = fig4.colorbar(m, cax=cbar_ax)
+        cb.set_label(MagUnit[2])
       plt.subplots_adjust(hspace=0.05, wspace=0.30)
       plt.show()
       plt.close(fig1)
