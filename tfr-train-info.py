@@ -5,6 +5,7 @@ import numpy as np
 pathTrain = './tfr/trn-patch.tfr'  # The TFRecord file containing the training set
 pathValid = './tfr/val-patch.tfr'    # The TFRecord file containing the validation set
 pathTest = './tfr/tst-patch.tfr'    # The TFRecord file containing the test set
+pathOut = './tfr/trn-patch-quiet.tfr'  # The TFRecord file containing the sliced output
 
 batchSize=40
 batchN=500
@@ -24,11 +25,16 @@ with tf.device('/cpu:0'):
     filename_queue = tf.train.string_input_producer([pathTrain], num_epochs=1)
     # Define a reader and read the next record
     reader = tf.TFRecordReader()
+    # open the TFRecords file
+    writer = tf.python_io.TFRecordWriter(pathOut)
+
+
     _, serialized_example = reader.read(filename_queue)
     # Decode the record read by the reader
-    features = tf.parse_single_example(serialized_example, features=feature)
+    example = tf.parse_single_example(serialized_example, features=feature)
   
-    name = features['name']
+    name = example['name']
+    active = example['active']
     # Any preprocessing here ...
     
     # Creates batches by randomly shuffling tensors
