@@ -10,18 +10,18 @@ from tensorflow.keras.callbacks import ModelCheckpoint
 from tensorflow.keras.models import model_from_yaml
 from tensorflow.keras import backend as K
 
-Version='3d-aq-v1-3'
+Version='3d-as-v1-1'
 doNormalize=True
 doWLConvolution=True
 doBatchNorm=False
 useCheckpoint=""
-useDropout=0.10
+useDropout=0.1
 useLeakyReLU=0
 baseChannels=16
 filterSize=3
 useLearningRate=3e-4
 #useLearningRate=1e-6
-useBatchSize=16
+useBatchSize=32
 nEpochs=150
 startEpoch=0
 
@@ -39,18 +39,14 @@ XMagfld=64
 YMagfld=64
 ZMagfld=3
 
-#177244 patches: 21.8% train, 2.7%validate, 2.8%test
-nExamples=38639
-#nExamples=19269
-nValid=4785
-#nValid=2440
-nTest=4963
-#nTest=2545
+nExamples=19343
+nValid=2374
+nTest=2550
 
-pathTrain = './tfr/trn-patch.tfr'  # The TFRecord file containing the training set
-pathValid = './tfr/val-patch.tfr'    # The TFRecord file containing the validation set
-pathTest = './tfr/tst-patch.tfr'    # The TFRecord file containing the test set
-pathWeight = './model/patch-%s.h5'%(Version)  # The HDF5 weight file generated for the trained model
+pathTrain = './tfr/trn-patch-active.tfr'  # The TFRecord file containing the training set
+pathValid = './tfr/val-patch-active.tfr'    # The TFRecord file containing the validation set
+pathTest = './tfr/tst-patch-active.tfr'    # The TFRecord file containing the test set
+pathWeight = './model/patch-%se{epoch:d}.h5'%(Version)  # The HDF5 weight file generated for the trained model
 pathModel = './model/patch-%s.nn'%(Version)  # The model saved as a JSON file
 pathLog = './log/patch-%s'%(Version)  # The training log
 
@@ -626,7 +622,7 @@ def UNet():
 
   model = Model(inputs=[inputs], outputs=[conv10])
 
-  model.compile(optimizer=Adam(lr=useLearningRate), loss='mse', metrics=['mae', 'mse'])
+  model.compile(optimizer=Adam(lr=useLearningRate), loss='mae', metrics=['mae', 'mse'])
 
   print(model.summary())
 
@@ -681,25 +677,28 @@ def train():
     return x, y
 
   #construct a TFRecordDataset
-  dsTrain = tf.data.TFRecordDataset(pathTrain).map(_parse_record)
-  dsTrain = dsTrain.prefetch(useBatchSize)
-  dsTrain = dsTrain.shuffle(2*useBatchSize)
+  dsTrain = tf.data.TFRecordDataset(pathTrain).map(_parse_record, num_parallel_calls=8)
+  dsTrain = dsTrain.prefetch(2)
+  #dsTrain = dsTrain.shuffle()
   dsTrain = dsTrain.repeat()
   dsTrain = dsTrain.batch(useBatchSize)
+  #dsTrain = dsTrain.cache()
 
-  dsValid = tf.data.TFRecordDataset(pathValid).map(_parse_record)
+  dsValid = tf.data.TFRecordDataset(pathValid).map(_parse_record, num_parallel_calls=8)
   #dsValid = dsValid.shuffle()
-  dsValid = dsValid.prefetch(useBatchSize)
+  dsValid = dsValid.prefetch(10)
   dsValid = dsValid.repeat()
   dsValid = dsValid.batch(useBatchSize)
+  #dsValid = dsValid.cache()
+
 
   print('-'*30)
   print('Loading model...')
   print('-'*30)
   model = UNet()
   callbacks = [
-      tf.keras.callbacks.ModelCheckpoint(pathWeight, verbose=1, monitor='val_loss', save_best_only=True),
-      tf.keras.callbacks.TensorBoard(log_dir = pathLog, histogram_freq = 5, write_graph = False, write_images = True)
+      tf.keras.callbacks.ModelCheckpoint(pathWeight, verbose=1, monitor='val_mean_absolute_error', save_best_only=True),
+      tf.keras.callbacks.TensorBoard(log_dir = pathLog, histogram_freq = 10, write_graph = False, write_images = True)
   ]
 
   print('-'*30)
