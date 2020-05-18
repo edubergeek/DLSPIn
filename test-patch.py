@@ -15,18 +15,23 @@ from tensorflow.keras import backend as K
 from tensorflow.keras.models import model_from_yaml
 from tensorflow.keras.optimizers import Adam
 
-Model='patch-3d'
-Version='5-3'
-Checkpoint='187'
+Model='patch-3d-aq'
+Version='1-6'
+Checkpoint='145'
 Basename="%s-v%s"%(Model,Version)
 doNormalize=True
 doWLConvolution=True
 doPlot=False
 useLearningRate=1e-3
 sizeBatch=32
+nTest=1504
+#nTest=4785
+#nTest=38639
+#nTest=4998
 #nTest=2545
-nTest=1152
-nStep=int(nTest/sizeBatch)
+#nTest=1152
+nStep=int(np.ceil(nTest/sizeBatch))
+print(nStep)
 #nStep=2
 nEpochs=1
 useBquv=0
@@ -51,7 +56,7 @@ YMagfld=64
 ZMagfld=3
 
 
-pathTest = './tfr/val-patch.tfr'    # The TFRecord file containing the test set
+pathTest = './tfr/val-patch-quiet.tfr'    # The TFRecord file containing the test set
 pathWeight = './model/%se%s.h5'%(Basename,Checkpoint)  # The HDF5 weight file generated for the trained model
 pathModel = './model/%s.nn'%(Basename)  # The model saved as a JSON file
 
@@ -255,8 +260,8 @@ def test():
   print('-'*30)
   print('Opening test dataset ...')
   print('-'*30)
-  dsTest = tf.data.TFRecordDataset(pathTest).map(_parse_record)
-  dsTest = dsTest.prefetch(sizeBatch)
+  dsTest = tf.data.TFRecordDataset(pathTest).map(_parse_record, num_parallel_calls=8)
+  dsTest = dsTest.prefetch(10)
   dsTest = dsTest.repeat(1)
   dsTest = dsTest.batch(sizeBatch)
 
@@ -274,7 +279,7 @@ def test():
   sess = K.get_session()
   n = 0
 
-  scores = model.evaluate(dsTest, steps=nStep+1, verbose=1)
+  scores = model.evaluate(dsTest, steps=nStep, verbose=1)
   for m in range(0, len(scores)):
     print('%s=%f'%(model.metrics_names[m], scores[m]))
 
