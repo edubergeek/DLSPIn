@@ -7,7 +7,7 @@ Affiliations: Institute for Astronomy, Univ. of Hawaii Manoa
 Date: 2018-10-13
 
 ## Data Description
-URL: 
+URL: https://www2.hao.ucar.edu/csac/csac-data/sp-data-description
 Citation: 
 
 ## Publications
