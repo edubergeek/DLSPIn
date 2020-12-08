@@ -10,6 +10,9 @@ Date: 2018-10-13
 URL: 
 Citation: 
 
+## Publications
+"Inverting Solar Spectropolarimetric Observations with Deep Learning", Curt Dodds, Ian Cunningham, Lucas Tarr, Sarah Jaeggli, Tom Schad, Peter Sadowski and Xudong Sun, [pdf]
+
 ## Level 2 FITS file
 Each FITS file is a spectral inversion using the MERLIN code implementation of Milne-Eddington inversion from the level 1 Stokes params
 
